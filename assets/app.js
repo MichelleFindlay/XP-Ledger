@@ -25,6 +25,8 @@
         prevArtFallback: document.querySelector("[data-prev-art-fallback]"),
         prevName: document.querySelector("[data-prev-name]"),
         prevMeta: document.querySelector("[data-prev-meta]"),
+        heroTooltip: document.querySelector("[data-hero-tooltip]"),
+        prevTooltip: document.querySelector("[data-prev-tooltip]"),
         updated: document.querySelector("[data-updated]"),
         bgA: document.querySelector("[data-bg-a]"),
         bgB: document.querySelector("[data-bg-b]"),
@@ -287,6 +289,61 @@
         root.setProperty("--accent-soft", "rgba(" + r + ", " + g + ", " + b + ", 0.35)");
     }
 
+    // --- Hover info cards over game art ---
+    // Same markup index.php's renderTooltip() produces, from the 'info'
+    // payload built by Library::steamInfo() / retroCards().
+
+    function fillTooltip(tooltip, info) {
+        if (!tooltip) return;
+        tooltip.innerHTML = "";
+        if (!info) {
+            tooltip.style.display = "none";
+            return;
+        }
+        tooltip.style.display = "";
+        tooltip.appendChild(el("span", "art-tooltip-title", info.title));
+        (info.groups || []).forEach(function (group) {
+            var g = el("span", "art-tooltip-group" + (group.accent ? " accent" : ""));
+            group.lines.forEach(function (line) {
+                g.appendChild(el("span", "art-tooltip-line", line));
+            });
+            tooltip.appendChild(g);
+        });
+    }
+
+    function buildTooltip(info) {
+        var tooltip = el("span", "art-tooltip");
+        fillTooltip(tooltip, info);
+        return tooltip;
+    }
+
+    // Tooltips open upward by default; flip them below the art when there
+    // isn't room above in the viewport, and pin them to the art's right
+    // edge when opening left-aligned would run off the right of the screen
+    // (the previously-played thumb sits at the far right of the hero).
+    function positionArtTooltip(wrapper) {
+        var tooltip = wrapper.querySelector(".art-tooltip");
+        if (!tooltip || tooltip.style.display === "none") return;
+
+        var rect = wrapper.getBoundingClientRect();
+        wrapper.classList.toggle("art-hover-below", rect.top - tooltip.offsetHeight - 20 < 0);
+        wrapper.classList.toggle("art-hover-right", rect.left + tooltip.offsetWidth > document.documentElement.clientWidth - 8);
+    }
+
+    // The hero and every panel use backdrop-filter, which makes each one
+    // its own stacking context: a tooltip spilling out of its card gets
+    // painted underneath any card that comes later in the page, whatever
+    // its z-index (and Chromium also bleeds the later card's content
+    // through it). Dropping backdrop-filter page-wide while a tooltip is
+    // open removes those stacking contexts so the tooltip sits on top.
+    // The difference is barely visible: the page background is already a
+    // heavily blurred copy of the art.
+    document.addEventListener("mouseover", function (evt) {
+        var wrapper = evt.target.closest && evt.target.closest(".art-hover");
+        document.body.classList.toggle("tooltip-open", !!wrapper);
+        if (wrapper) positionArtTooltip(wrapper);
+    });
+
     // --- Relative times ---
 
     function timeAgo(ts) {
@@ -374,11 +431,12 @@
             els.achWrap.style.display = ach ? "" : "none";
             if (ach) {
                 els.achFill.style.width = ach.pct + "%";
-                setText(els.achLabel, ach.unlocked + " / " + ach.total + " achievements · " + ach.pct + "%");
+                setText(els.achLabel, ach.unlocked + " / " + ach.total + " " + (ach.noun || "achievements") + " · " + ach.pct + "%");
             }
         }
 
         renderLinks(game.links);
+        fillTooltip(els.heroTooltip, game.info);
 
         var bg = game.background || game.art_fallback || game.art;
         if (bg) {
@@ -398,6 +456,7 @@
         setArt(els.prevArtImg, els.prevArtFallback, prev.art, prev.art_fallback, prev.name);
         setText(els.prevName, prev.name);
         setText(els.prevMeta, prev.platform_label + " · " + timeAgo(prev.last_played));
+        fillTooltip(els.prevTooltip, prev.info);
     }
 
     function renderStats(stats) {
@@ -486,7 +545,10 @@
             img.src = g.art;
             capsule.appendChild(img);
             capsule.appendChild(fallback);
-            li.appendChild(capsule);
+            var hover = el("span", "art-hover");
+            hover.appendChild(capsule);
+            hover.appendChild(buildTooltip(g.info));
+            li.appendChild(hover);
 
             var meta = el("span", "meta");
             var name = el("a", "name", g.name);
@@ -799,7 +861,7 @@
         modalBody.appendChild(renderProgressRows(data.comparisons.map(function (c) {
             return { count: c.count.toLocaleString(), label: c.label, right: c.pct + "% to the next", pct: c.pct };
         })));
-        modalBody.appendChild(el("div", "widget-subtext", "From Steam's own lifetime playtime counters."));
+        modalBody.appendChild(el("div", "widget-subtext", "From Steam's own lifetime playtime counters. Speedrun and playthrough lengths are rounded, typical times."));
     }
 
     function renderLootTiers(data) {

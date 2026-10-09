@@ -101,6 +101,31 @@ try {
     $failed[] = 'ledger';
 }
 
+// Xbox title list + playtime, so page loads never wait on OpenXBL. Cached
+// 15-60 minutes inside the client, so this costs a few requests an hour.
+if ($library->xbox()->enabled()) {
+    try {
+        $notes[] = sprintf('xbox: %d title(s)', count($library->xbox()->titles()));
+        $refreshed[] = 'xbox';
+    } catch (Throwable $e) {
+        $failed[] = 'xbox';
+    }
+}
+
+// PlayStation games + trophies, for the same reason. Also keeps the PSN
+// access token refreshed between dashboard visits.
+if ($library->psn()->enabled()) {
+    try {
+        $notes[] = sprintf('playstation: %d game(s)', count($library->psn()->games()));
+        if ($library->psn()->authError()) {
+            $notes[] = 'playstation sign-in failing — update psn_npsso';
+        }
+        $refreshed[] = 'playstation';
+    } catch (Throwable $e) {
+        $failed[] = 'playstation';
+    }
+}
+
 // Keeps the now-playing session timer alive between dashboard visits.
 try {
     $library->nowPlaying();

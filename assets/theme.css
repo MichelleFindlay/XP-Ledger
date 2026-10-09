@@ -1,0 +1,672 @@
+/* ===================================================================
+   XP Ledger — gaming HUD skin
+
+   Loaded after style.css and kept separate from it on purpose: style.css
+   is the layout (largely shared with lastfm-dash), this file is the look.
+   Everything here keys off --accent, which assets/app.js keeps in sync
+   with the current game's art, so the whole HUD recolours per game.
+
+   Corner brackets are drawn with ::before backgrounds rather than
+   clip-path, because clip-path would also clip the hover tooltips that
+   deliberately spill out of their cards.
+   =================================================================== */
+
+:root {
+    --font-display: "Chakra Petch", "Rajdhani", "Bahnschrift", "DIN Alternate", "Segoe UI", system-ui, sans-serif;
+    --radius: 4px;
+    --hud-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015));
+    --hud-border: color-mix(in srgb, var(--accent) 28%, rgba(255, 255, 255, 0.08));
+    --glow: 0 0 18px color-mix(in srgb, var(--accent) 45%, transparent);
+    --glow-strong: 0 0 10px var(--accent), 0 0 28px color-mix(in srgb, var(--accent) 50%, transparent);
+    --notch: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+    --gold: #ffcf40;
+    --silver: #cfd8e3;
+    --bronze: #e0915a;
+}
+
+body {
+    background: #06080d;
+}
+
+::selection {
+    background: var(--accent);
+    color: #fff;
+}
+
+html {
+    scrollbar-color: color-mix(in srgb, var(--accent) 60%, #222) #06080d;
+    scrollbar-width: thin;
+}
+
+/* --- Backdrop: scanlines + a faint grid fading out from the top --- */
+
+.bg-scrim {
+    background:
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 3px),
+        linear-gradient(180deg, rgba(6, 8, 13, 0.62), rgba(6, 8, 13, 0.92));
+}
+
+.bg-scrim::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(color-mix(in srgb, var(--accent) 10%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--accent) 10%, transparent) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 70%);
+    mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 70%);
+    transition: background-image var(--color-transition);
+}
+
+/* --- Type --- */
+
+.site-header h1,
+.panel h2,
+.game-name,
+.status-badge,
+.game-platform,
+.game-link,
+.period-btn,
+.stat-value,
+.stat-label,
+.widget-card-title,
+.widget-title,
+.widget-headline,
+.prev-track-label,
+.game-row .rank,
+.game-row .count,
+.platform-stats strong,
+.level-badge,
+.loot-title,
+.mini-stat strong,
+.site-footer {
+    font-family: var(--font-display);
+}
+
+.game-row .count,
+.stat-value,
+.ach-label,
+.platform-stats strong,
+.mini-stat strong {
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- Header --- */
+
+.site-header {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--hud-border);
+}
+
+.site-header h1 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    text-shadow: var(--glow);
+}
+
+.site-logo {
+    filter: drop-shadow(0 0 6px var(--accent));
+}
+
+.site-header .updated {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.7rem;
+}
+
+/* Player card: avatar, name, Steam level and XP towards the next one */
+
+.persona {
+    gap: 10px;
+    padding: 5px 14px 5px 5px;
+    border-radius: 0;
+    clip-path: var(--notch);
+    background: var(--hud-bg), rgba(10, 12, 18, 0.7);
+    border: 1px solid var(--hud-border);
+}
+
+.persona-avatar {
+    position: relative;
+    flex: none;
+}
+
+.persona-avatar img {
+    width: 38px;
+    height: 38px;
+    border-radius: 3px;
+    border: 1px solid var(--accent);
+    box-shadow: var(--glow);
+}
+
+.persona-dot {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    border: 2px solid #06080d;
+    width: 11px;
+    height: 11px;
+}
+
+.persona-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 120px;
+}
+
+.persona-name {
+    font-weight: 600;
+    line-height: 1;
+}
+
+.persona-xp {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.level-badge {
+    flex: none;
+    padding: 1px 6px;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #fff;
+    background: var(--accent);
+    clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+    transition: background var(--color-transition);
+}
+
+.xp-bar {
+    flex: 1;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+/* --- Cards: HUD panels with glowing corner brackets --- */
+
+.now-playing,
+.panel,
+.widget-card,
+.stat-item,
+.modal {
+    border-radius: var(--radius);
+    background: var(--hud-bg), rgba(10, 12, 18, 0.55);
+    border: 1px solid var(--hud-border);
+}
+
+.now-playing,
+.panel,
+.widget-card {
+    position: relative;
+}
+
+.now-playing::before,
+.panel::before,
+.widget-card::before,
+.modal::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    background:
+        linear-gradient(var(--accent), var(--accent)) top left / 20px 2px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) top left / 2px 20px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) bottom right / 20px 2px no-repeat,
+        linear-gradient(var(--accent), var(--accent)) bottom right / 2px 20px no-repeat;
+    filter: drop-shadow(0 0 4px var(--accent));
+    transition: background var(--color-transition);
+}
+
+.now-playing {
+    background:
+        radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+        var(--hud-bg),
+        rgba(10, 12, 18, 0.6);
+    box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.panel h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--fg);
+}
+
+.panel h2::before {
+    content: "";
+    flex: none;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    box-shadow: var(--glow-strong);
+    transition: background var(--color-transition);
+}
+
+/* --- Now playing hero --- */
+
+.art-tile {
+    border-radius: 3px;
+    border: 1px solid var(--accent);
+    box-shadow: var(--glow), 0 14px 34px rgba(0, 0, 0, 0.6);
+    transition: border-color var(--color-transition), box-shadow 250ms ease, transform 250ms ease;
+}
+
+.now-playing > .art-hover:hover .art-tile {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: var(--glow-strong), 0 18px 40px rgba(0, 0, 0, 0.6);
+}
+
+.status-badge {
+    padding: 3px 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    background: rgba(255, 255, 255, 0.06);
+    clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+
+.status-badge.live {
+    color: #fff;
+    background: var(--accent);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    animation: live-pulse 2s ease-in-out infinite;
+}
+
+.status-badge.live .eq span {
+    background: #fff;
+}
+
+@keyframes live-pulse {
+    0%, 100% { filter: drop-shadow(0 0 0 transparent); }
+    50% { filter: drop-shadow(0 0 8px var(--accent)); }
+}
+
+.game-name {
+    font-size: 2.1rem;
+    letter-spacing: 0.01em;
+    text-shadow: 0 0 22px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.game-platform {
+    font-weight: 600;
+    letter-spacing: 0.2em;
+}
+
+.game-presence {
+    font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+    font-style: normal;
+    font-size: 0.8rem;
+    color: var(--accent);
+}
+
+.game-presence::before {
+    content: "> ";
+    opacity: 0.6;
+}
+
+.ach-progress {
+    max-width: 420px;
+}
+
+.ach-progress::before {
+    content: "";
+    flex: none;
+    width: 16px;
+    height: 16px;
+    background: var(--gold);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9H4.5a2.5 2.5 0 0 1 0-5H6'/%3E%3Cpath d='M18 9h1.5a2.5 2.5 0 0 0 0-5H18'/%3E%3Cpath d='M4 22h16'/%3E%3Cpath d='M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22'/%3E%3Cpath d='M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22'/%3E%3Cpath d='M18 2H6v7a6 6 0 0 0 12 0V2Z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9H4.5a2.5 2.5 0 0 1 0-5H6'/%3E%3Cpath d='M18 9h1.5a2.5 2.5 0 0 0 0-5H18'/%3E%3Cpath d='M4 22h16'/%3E%3Cpath d='M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22'/%3E%3Cpath d='M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22'/%3E%3Cpath d='M18 2H6v7a6 6 0 0 0 12 0V2Z'/%3E%3C/svg%3E") center / contain no-repeat;
+    filter: drop-shadow(0 0 4px rgba(255, 207, 64, 0.6));
+}
+
+.ach-bar {
+    height: 8px;
+    border-radius: 0;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Buttons: notched corners, like a game menu */
+
+.game-link {
+    border-radius: 0;
+    clip-path: var(--notch);
+    padding: 7px 14px;
+    font-size: 0.74rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.game-link:hover {
+    background: color-mix(in srgb, var(--accent) 30%, rgba(255, 255, 255, 0.08));
+}
+
+.game-link-launch {
+    padding-left: 16px;
+    padding-right: 18px;
+    background: var(--accent);
+    box-shadow: var(--glow);
+}
+
+.game-link-launch:hover {
+    background: var(--accent);
+    filter: brightness(1.2) drop-shadow(0 0 8px var(--accent));
+}
+
+.prev-track {
+    border-left-color: var(--hud-border);
+}
+
+.prev-track-label {
+    letter-spacing: 0.18em;
+}
+
+.prev-track-thumb {
+    border-radius: 3px;
+    border: 1px solid var(--hud-border);
+}
+
+/* --- Progress bars: segmented, like an XP or health bar --- */
+
+.ach-fill,
+.bar-fill,
+.xp-fill,
+.distance-bar-fill,
+.shame-played {
+    border-radius: 0;
+    background:
+        repeating-linear-gradient(90deg, transparent 0 7px, rgba(6, 8, 13, 0.85) 7px 9px),
+        linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, #000), var(--accent));
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.xp-fill {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, #fff), var(--accent));
+}
+
+.bar,
+.distance-bar {
+    border-radius: 0;
+    height: 5px;
+}
+
+/* --- Game lists --- */
+
+.game-row {
+    padding: 4px 6px 4px 0;
+    border-left: 2px solid transparent;
+    transition: background 150ms ease, border-color 150ms ease;
+}
+
+.game-row:hover {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%);
+    border-left-color: var(--accent);
+}
+
+.game-row .rank {
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+/* Podium colours — Most Played only; Recently Played's numbers are just order. */
+[data-period-content="games"] .game-row:nth-child(1) .rank { color: var(--gold); text-shadow: 0 0 8px rgba(255, 207, 64, 0.6); }
+[data-period-content="games"] .game-row:nth-child(2) .rank { color: var(--silver); text-shadow: 0 0 8px rgba(207, 216, 227, 0.5); }
+[data-period-content="games"] .game-row:nth-child(3) .rank { color: var(--bronze); text-shadow: 0 0 8px rgba(224, 145, 90, 0.5); }
+
+.game-row .capsule {
+    border-radius: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.game-row .art-hover:hover .capsule {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+}
+
+.game-row .count {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--fg);
+}
+
+/* --- Period picker: tab strip --- */
+
+.period-picker {
+    border-radius: 0;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    clip-path: var(--notch);
+}
+
+.period-btn {
+    border-radius: 0;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.period-btn.active {
+    clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+    box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.5);
+}
+
+.genre-threshold-label select {
+    border-radius: 0;
+    font-family: var(--font-display);
+}
+
+/* --- Genre bar: segmented --- */
+
+.genre-bar {
+    gap: 3px;
+    height: 14px;
+    border-radius: 0;
+    background: transparent;
+}
+
+.genre-segment {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 0 8px rgba(0, 0, 0, 0.4);
+}
+
+.genre-swatch {
+    border-radius: 0;
+    transform: rotate(45deg) scale(0.85);
+}
+
+/* --- Widget cards: quest board --- */
+
+.widget-card::before {
+    inset: 0; /* the card clips its overflow for the hover sheen */
+}
+
+.widget-card {
+    gap: 8px;
+    padding: 18px;
+    overflow: hidden;
+}
+
+.widget-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    transform: skewX(-20deg);
+    transition: left 500ms ease;
+    pointer-events: none;
+}
+
+.widget-card:hover {
+    background: var(--hud-bg), color-mix(in srgb, var(--accent) 12%, rgba(10, 12, 18, 0.7));
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+    transform: translateY(-3px);
+}
+
+.widget-card:hover::after {
+    left: 120%;
+}
+
+.widget-card-icon {
+    box-sizing: content-box;
+    padding: 7px;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+    filter: drop-shadow(0 0 4px var(--accent));
+}
+
+.widget-card-title {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* --- Modal --- */
+
+.modal-overlay {
+    background: rgba(2, 3, 6, 0.8);
+}
+
+.modal {
+    background: var(--hud-bg), #0c0f16;
+    box-shadow: var(--glow), 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.modal-close {
+    border-radius: 0;
+    clip-path: var(--notch);
+}
+
+.modal-close:hover {
+    background: var(--accent);
+}
+
+.widget-title {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+}
+
+.widget-headline {
+    text-shadow: var(--glow);
+}
+
+/* --- Lifetime stats: HUD readouts --- */
+
+.stat-item {
+    position: relative;
+    padding: 16px 8px 14px;
+}
+
+.stat-item::after {
+    content: "";
+    position: absolute;
+    left: 20%;
+    right: 20%;
+    bottom: -1px;
+    height: 2px;
+    background: var(--accent);
+    box-shadow: var(--glow-strong);
+    transition: background var(--color-transition);
+}
+
+.stat-icon {
+    filter: drop-shadow(0 0 5px var(--accent));
+}
+
+.stat-value {
+    font-size: 1.9rem;
+    text-shadow: 0 0 16px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.stat-label {
+    letter-spacing: 0.14em;
+}
+
+/* --- Hover tooltips --- */
+
+.art-tooltip {
+    border-radius: 2px;
+    background: #0b0e15;
+    border: 1px solid var(--accent);
+    box-shadow: var(--glow), 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+
+.art-tooltip-title {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+}
+
+/* --- Platform panels --- */
+
+.platform-games img {
+    border-radius: 2px;
+    border: 1px solid var(--hud-border);
+}
+
+/* PlayStation trophy tiers */
+
+.trophy-platinum { --tier: #b7d4ff; }
+.trophy-gold { --tier: #e6b93c; }
+.trophy-silver { --tier: #c9ced6; }
+.trophy-bronze { --tier: #c8814f; }
+
+.trophy-stat strong {
+    color: var(--tier);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--tier) 45%, transparent);
+}
+
+.trophy-stat span::before {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 5px;
+    background: var(--tier);
+    transform: rotate(45deg);
+}
+
+.trophy-platinum-text {
+    color: #b7d4ff;
+    font-weight: 600;
+}
+
+.psn-plus {
+    color: #f5c242;
+    font-weight: 700;
+}
+
+/* --- Footer --- */
+
+.site-footer {
+    padding-top: 16px;
+    border-top: 1px solid var(--hud-border);
+    letter-spacing: 0.06em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .status-badge.live,
+    .widget-card::after {
+        animation: none;
+        transition: none;
+    }
+}

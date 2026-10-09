@@ -6,7 +6,9 @@ playing right now, your most-played and recently played games, a genre
 breakdown, lifetime stats and a set of fun data-driven insight widgets, all
 themed live from the current game's art.
 
-It pulls from **Steam**, plus **RetroAchievements** if you want it.
+It pulls from **Steam**, plus **Xbox** (consoles and PC Game Pass / Xbox
+app games), **PlayStation** (PS4 / PS5) and **RetroAchievements** if you
+want them.
 
 ## Features
 
@@ -23,6 +25,11 @@ It pulls from **Steam**, plus **RetroAchievements** if you want it.
   periods come from the playtime ledger (see below).
 - **Recently Played**: last-played time and hours over the last two weeks.
 - **Genre Breakdown**: playtime-weighted, from Steam store genres, per period.
+- **Xbox panel** (optional): gamerscore, games played, tracked hours, and
+  recent Xbox / PC Game Pass titles with devices, playtime and gamerscore
+  progress.
+- **PlayStation panel** (optional): trophy level, platinum/gold/silver/bronze
+  counts, hours played, and recent games with playtime and trophy progress.
 - **RetroAchievements panel** (optional): points, rank, mastered/beaten
   counts and recent retro games with progress bars.
 - **Lifetime Stats**: games owned, hours played, share of the library
@@ -32,8 +39,9 @@ It pulls from **Steam**, plus **RetroAchievements** if you want it.
     achievements, built from Steam's exact unlock timestamps.
   - **Weekly Rhythm**: playtime by weekday, a 12-week day grid and your
     current play streak, from the ledger.
-  - **Time Well Spent**: total hours converted into films, flights, working
-    weeks and trips to the Moon.
+  - **Time Well Spent**: total hours measured in Super Mario Bros. speedruns,
+    Minecraft and GTA V in-game days, Portal and Elden Ring playthroughs,
+    Stardew Valley years and Games Done Quick marathons.
   - **Loot Tiers**: your most-played games rolled as a
     legendary/epic/rare/uncommon drop.
   - **Pile of Shame**: unplayed and barely played counts, the famous games
@@ -138,6 +146,70 @@ Once it's scheduled, set `'cron_enabled' => true` to show a footer note. If
 you set `cron_secret`, HTTP-triggered runs need a matching `?token=`. CLI
 runs are always allowed.
 
+## Xbox and PC Game Pass (optional)
+
+Microsoft only opens its Xbox APIs to licensed game developers, so XP
+Ledger uses [OpenXBL](https://xbl.io), an unofficial third-party gateway.
+Sign in there with your Microsoft account, copy your personal API key from
+the dashboard into `openxbl_api_key`, and you get:
+
+- Xbox games in the Now Playing card (from Xbox presence, including rich
+  presence like "Racing in Guanajuato"),
+- an Xbox panel with gamerscore, games played and recent titles,
+- an `xbox_summary` MCP tool.
+
+This covers anything played on an Xbox console and PC games played through
+the Xbox app, PC Game Pass or the Microsoft Store, since they share one
+Xbox account. Steam games on PC are already covered by the Steam side.
+
+Things to know:
+
+- **OpenXBL holds a token for your Microsoft account.** That's how it
+  reaches Xbox Live on your behalf.
+- **Rate limit.** The free tier allows 150 requests an hour. XP Ledger
+  checks presence at most every `xbox_presence_ttl` seconds (default 120,
+  minimum 60), caches the title list for 15 minutes and the profile and
+  playtime for an hour (playtime for every game is one batched request),
+  which comes to roughly 40-50 requests an hour with the dashboard open all
+  day.
+- **OpenXBL can be slow**, taking 8-10 seconds even to reject a bad key. If a
+  request fails (bad key, outage, rate limiting), XP Ledger keeps showing
+  the last good data and makes no Xbox requests for 5 minutes, so one slow
+  failure can't stall every page load.
+- **Playtime is patchy.** Hours come from Xbox's per-game "MinutesPlayed"
+  stat, which some older and PC titles don't report. Xbox playtime doesn't
+  feed the playtime ledger, Most Played or Genre Breakdown, which stay
+  Steam-only.
+
+## PlayStation (optional)
+
+Sony has no public API, so XP Ledger uses the same unofficial PlayStation
+App endpoints as the [psn-api](https://github.com/achievements-app/psn-api)
+library. To connect:
+
+1. Sign in at [playstation.com](https://www.playstation.com) in your browser.
+2. Open <https://ca.account.sony.com/api/v1/ssocookie> and copy the
+   64-character `npsso` value.
+3. Paste it into `psn_npsso` in `config.php`.
+
+Treat the NPSSO like a password: it signs in as you. XP Ledger exchanges it
+for an access token and refresh token, stored in `cache/` and refreshed
+automatically. The NPSSO lasts about two months. When it expires, the
+dashboard shows a banner asking for a new one.
+
+You get PlayStation games in the Now Playing card, a PlayStation panel and a
+`playstation_summary` MCP tool. Notes:
+
+- **Playtime is PS4/PS5 only.** Sony doesn't report it for PS3 or Vita;
+  those games still appear through their trophy lists.
+- **Games and trophies are matched by name**, since Sony keeps them under
+  different IDs.
+- **Rate limits are undocumented,** so everything is cached conservatively
+  (presence every `psn_presence_ttl` seconds, default 120). Failures show
+  the last good data and pause PSN requests for 5 minutes.
+- PlayStation playtime doesn't feed the playtime ledger, Most Played or
+  Genre Breakdown, which stay Steam-only.
+
 ## RetroAchievements (optional)
 
 Set `retroachievements_username` and `retroachievements_api_key` (from
@@ -170,6 +242,8 @@ claude mcp add --transport http xp-ledger https://yourdomain.com/mcp.php \
 | `list_achievements` | Unlocks with exact timestamps, filterable by date |
 | `playtime_log` | Raw ledger entries and how far back tracking goes |
 | `lifetime_stats` | The Lifetime Stats panel's totals |
+| `xbox_summary` | Only when Xbox is configured: profile, now playing, every title with gamerscore and playtime |
+| `playstation_summary` | Only when PlayStation is configured: trophy level and counts, now playing, every game with playtime and trophy progress |
 | `retroachievements_summary` | Only when RetroAchievements is configured |
 | `widget_*` | One tool per insight widget |
 
@@ -178,12 +252,11 @@ identical to lastfm-dash's. See its README for step-by-step instructions.
 
 ## Adding another platform
 
-Each platform is its own small client in `lib/` (`Steam.php`,
-`RetroAchievements.php`). `Library::nowPlaying()` merges them into one
-shared card shape (`steamCard()` / `retroCards()`), so another source with
-a usable API can be added by writing a client and a `...Cards()` method
-that returns the same shape. PlayStation and Xbox don't offer official
-public APIs for this, so they aren't included.
+Each platform is its own small client in `lib/` (`Steam.php`, `Xbox.php`,
+`PlayStation.php`, `RetroAchievements.php`). `Library::nowPlaying()` merges them into one
+shared card shape (`steamCard()` / `xboxCard()` / `retroCards()`), so
+another source with a usable API can be added by writing a client and a
+`...Cards()` method that returns the same shape.
 
 ## License
 

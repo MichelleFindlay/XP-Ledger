@@ -53,6 +53,9 @@ const ICONS = [
     'calendar-days'  => '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
     'joystick'       => '<path d="M21 17a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2Z"/><path d="M6 15v-2"/><path d="M12 15V9"/><circle cx="12" cy="6" r="3"/>',
     'play'           => '<polygon points="6 3 20 12 6 21 6 3"/>',
+    // Brand mark (Simple Icons, CC0) — a filled shape, unlike the Lucide line icons above.
+    'playstation'    => '<path fill="currentColor" stroke="none" d="M8.984 2.596v17.547l3.915 1.261V6.688c0-.69.304-1.151.794-.991.636.18.76.814.76 1.505v5.875c2.441 1.193 4.362-.002 4.362-3.152 0-3.237-1.126-4.675-4.438-5.827-1.307-.448-3.728-1.186-5.39-1.502zm4.656 16.241l6.296-2.275c.715-.258.826-.625.246-.818-.586-.192-1.637-.139-2.357.123l-4.205 1.5V14.98l.24-.085s1.201-.42 2.913-.615c1.696-.18 3.785.03 5.437.661 1.848.601 2.04 1.472 1.576 2.072-.465.6-1.622 1.036-1.622 1.036l-8.544 3.107V18.86zM1.807 18.6c-1.9-.545-2.214-1.668-1.352-2.32.801-.586 2.16-1.052 2.16-1.052l5.615-2.013v2.313L4.205 17c-.705.271-.825.632-.239.826.586.195 1.637.15 2.343-.12L8.247 17v2.074c-.12.03-.256.044-.39.073-1.939.331-3.996.196-6.038-.479z"/>',
+    'xbox'           => '<path fill="currentColor" stroke="none" d="M4.102 21.033C6.211 22.881 8.977 24 12 24c3.026 0 5.789-1.119 7.902-2.967 1.877-1.912-4.316-8.709-7.902-11.417-3.582 2.708-9.779 9.505-7.898 11.417zm11.16-14.406c2.5 2.961 7.484 10.313 6.076 12.912C23.002 17.48 24 14.861 24 12.004c0-3.34-1.365-6.362-3.57-8.536 0 0-.027-.022-.082-.042-.063-.022-.152-.045-.281-.045-.592 0-1.985.434-4.805 3.246zM3.654 3.426c-.057.02-.082.041-.086.042C1.365 5.642 0 8.664 0 12.004c0 2.854.998 5.473 2.661 7.533-1.401-2.605 3.579-9.951 6.08-12.91-2.82-2.813-4.216-3.245-4.806-3.245-.131 0-.223.021-.281.046v-.002zM12 3.551S9.055 1.828 6.755 1.746c-.903-.033-1.454.295-1.521.339C7.379.646 9.659 0 11.984 0H12c2.334 0 4.605.646 6.766 2.085-.068-.046-.615-.372-1.52-.339C14.946 1.828 12 3.545 12 3.545v.006z"/>',
 ];
 
 const STEAM_LOGO = 'M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.5 1.009 2.455-.397.957-1.497 1.41-2.454 1.012H7.54zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.253 0-2.265-1.014-2.265-2.265z';
@@ -69,22 +72,29 @@ function renderIcon(string $name, string $class): string
 
 function timeAgo(int $ts): string
 {
-    if ($ts <= 0) {
-        return 'never';
-    }
-    $secs = max(0, time() - $ts);
-    if ($secs < 120) {
-        return 'just now';
-    }
-    foreach ([[86400 * 365, 'year'], [86400 * 30, 'month'], [86400 * 7, 'week'], [86400, 'day'], [3600, 'hour'], [60, 'minute']] as [$unit, $label]) {
-        if ($secs >= $unit) {
-            $n = intdiv($secs, $unit);
+    return Library::timeAgo($ts);
+}
 
-            return $n . ' ' . $label . ($n === 1 ? '' : 's') . ' ago';
+/**
+ * The hover card over a game's art — see Library::steamInfo() for what's
+ * in it. $attr marks the hero/previous-game tooltips so assets/app.js can
+ * refill them on each poll; list-row tooltips are static.
+ */
+function renderTooltip(?array $info, string $attr = ''): string
+{
+    $html = '<span class="art-tooltip"' . ($attr !== '' ? ' ' . $attr : '') . ($info ? '' : ' style="display:none"') . '>';
+    if ($info) {
+        $html .= '<span class="art-tooltip-title">' . e($info['title']) . '</span>';
+        foreach ($info['groups'] as $group) {
+            $html .= '<span class="art-tooltip-group' . (!empty($group['accent']) ? ' accent' : '') . '">';
+            foreach ($group['lines'] as $line) {
+                $html .= '<span class="art-tooltip-line">' . e($line) . '</span>';
+            }
+            $html .= '</span>';
         }
     }
 
-    return 'just now';
+    return $html . '</span>';
 }
 
 $config = Config::load();
@@ -100,6 +110,9 @@ $recent = [];
 $genres = ['genres' => [], 'coverage' => 0, 'note' => null];
 $lifetimeStats = [];
 $retro = null;
+$xbox = null;
+$psn = null;
+$psnAuthError = null;
 $isPrivate = false;
 $apiError = false;
 
@@ -116,6 +129,16 @@ if (!$needsSetup) {
     $persona = $nowPlaying['persona'];
     $isPrivate = $library->isPrivate();
     $apiError = $persona === null;
+
+    // Steam level + progress through it, for the header's player card.
+    $badges = $library->steam()->badges();
+    if ($persona && $badges) {
+        $intoLevel = (int) ($badges['player_xp'] ?? 0) - (int) ($badges['player_xp_needed_current_level'] ?? 0);
+        $levelSpan = $intoLevel + (int) ($badges['player_xp_needed_to_level_up'] ?? 0);
+        $persona['level'] = (int) $badges['player_level'];
+        $persona['xp_pct'] = $levelSpan > 0 ? (int) floor($intoLevel / $levelSpan * 100) : 0;
+        $persona['xp_title'] = number_format((int) ($badges['player_xp'] ?? 0)) . ' XP · ' . number_format((int) ($badges['player_xp_needed_to_level_up'] ?? 0)) . ' XP to level ' . ($persona['level'] + 1);
+    }
 
     $mostPlayed = $library->gamesForPeriod($activeMostPlayedPeriod, (int) $config['top_limit'], $tz);
     $recent = $library->recentlyPlayed((int) $config['recent_limit']);
@@ -140,10 +163,45 @@ if (!$needsSetup) {
     }
 }
 
+if ($library && $library->xbox()->enabled()) {
+    $xboxAccount = $library->xbox()->account();
+    if ($xboxAccount) {
+        $xboxTitles = $library->xbox()->titles();
+        $xbox = [
+            'account' => $xboxAccount,
+            'played'  => count($xboxTitles),
+            'hours'   => (int) round(array_sum(array_column($xboxTitles, 'minutes')) / 60),
+            // Only games with something to show: titles Xbox merely knows
+            // you launched (no playtime stat, no gamerscore, no
+            // achievements) would just be a name and a date.
+            'games'   => array_slice(array_filter($xboxTitles, fn($t) => $t['minutes'] > 0 || $t['gamerscore'] > 0 || $t['achievements'] > 0), 0, 6),
+            'url'     => Xbox::profileUrl($xboxAccount['gamertag']),
+        ];
+    }
+}
+
+if ($library && $library->psn()->enabled()) {
+    $psnSummary = $library->psn()->trophySummary();
+    $psnAuthError = $library->psn()->authError();
+    if ($psnSummary) {
+        $psnGames = $library->psn()->games();
+        $psnProfile = $library->psn()->profile();
+        $psn = [
+            'profile' => $psnProfile,
+            'summary' => $psnSummary,
+            'played'  => count($psnGames),
+            'hours'   => (int) round(array_sum(array_column($psnGames, 'minutes')) / 60),
+            // Same rule as the Xbox panel: skip games with nothing to show.
+            'games'   => array_slice(array_filter($psnGames, fn($g) => $g['minutes'] > 0 || ($g['trophies']['earned_total'] ?? 0) > 0), 0, 6),
+            'url'     => $psnProfile ? PlayStation::profileUrl($psnProfile['online_id']) : 'https://www.playstation.com',
+        ];
+    }
+}
+
 $widgetDefs = [
     ['id' => 'unlock_clock', 'icon' => 'alarm-clock', 'title' => 'Achievement Clock', 'teaser' => 'When the trophies actually drop, across 24 hours'],
     ['id' => 'weekly_rhythm', 'icon' => 'calendar-range', 'title' => 'Weekly Rhythm', 'teaser' => 'Your play week, your streak, and 12 weeks at a glance'],
-    ['id' => 'time_translated', 'icon' => 'hourglass', 'title' => 'Time Well Spent', 'teaser' => 'Your total hours, converted into things that aren\'t games'],
+    ['id' => 'time_translated', 'icon' => 'hourglass', 'title' => 'Time Well Spent', 'teaser' => 'Your total hours, measured in speedruns, playthroughs and marathons'],
     ['id' => 'loot_tiers', 'icon' => 'swords', 'title' => 'Loot Tiers', 'teaser' => 'Your most-played games, rolled as a legendary drop'],
     ['id' => 'pile_of_shame', 'icon' => 'archive', 'title' => 'Pile of Shame', 'teaser' => 'The backlog, the famous ones in it, and how long it\'d take'],
     ['id' => 'completionist', 'icon' => 'trophy', 'title' => 'Completionist', 'teaser' => 'Perfect games, and the 100%s you\'re closest to'],
@@ -192,9 +250,10 @@ function renderGameList(array $rows, string $emptyMessage, ?string $note, bool $
 
         echo '<li class="game-row">'
             . '<span class="rank">' . (int) $r['rank'] . '</span>'
-            . '<a class="capsule" href="' . e($r['url']) . '" target="_blank" rel="noopener" tabindex="-1">'
+            . '<span class="art-hover"><a class="capsule" href="' . e($r['url']) . '" target="_blank" rel="noopener" tabindex="-1">'
             . '<img src="' . e($r['art']) . '" alt="" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'\';">'
             . '<span class="capsule-fallback" style="display:none">' . e($initial) . '</span></a>'
+            . renderTooltip($r['info'] ?? null) . '</span>'
             . '<span class="meta"><a class="name" href="' . e($r['url']) . '" target="_blank" rel="noopener">' . e($r['name']) . '</a>'
             . '<span class="sub">' . e($sub) . '</span></span>'
             . '<span class="count">' . e($r['label'])
@@ -271,7 +330,11 @@ function renderHeroLinks(?array $game): string
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e($config['app_name']) ?></title>
 <link rel="icon" href="data:image/svg+xml,<?= rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#66c0f4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' . ICONS['gamepad'] . '</svg>') ?>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap">
 <link rel="stylesheet" href="assets/style.css?v=<?= (int) @filemtime(__DIR__ . '/assets/style.css') ?>">
+<link rel="stylesheet" href="assets/theme.css?v=<?= (int) @filemtime(__DIR__ . '/assets/theme.css') ?>">
 </head>
 <body>
 
@@ -288,9 +351,19 @@ function renderHeroLinks(?array $game): string
             <span class="updated" data-updated></span>
             <?php if ($persona): ?>
                 <a class="persona" href="<?= e($persona['url']) ?>" target="_blank" rel="noopener">
-                    <?php if ($persona['avatar']): ?><img src="<?= e($persona['avatar']) ?>" alt=""><?php endif; ?>
-                    <span><?= e($persona['name']) ?></span>
-                    <span class="persona-dot<?= $persona['state'] > 0 ? ' online' : '' ?>" title="<?= $persona['state'] > 0 ? 'Online on Steam' : 'Offline on Steam' ?>"></span>
+                    <span class="persona-avatar">
+                        <?php if ($persona['avatar']): ?><img src="<?= e($persona['avatar']) ?>" alt=""><?php endif; ?>
+                        <span class="persona-dot<?= $persona['state'] > 0 ? ' online' : '' ?>" title="<?= $persona['state'] > 0 ? 'Online on Steam' : 'Offline on Steam' ?>"></span>
+                    </span>
+                    <span class="persona-meta">
+                        <span class="persona-name"><?= e($persona['name']) ?></span>
+                        <?php if (isset($persona['level'])): ?>
+                            <span class="persona-xp" title="<?= e($persona['xp_title']) ?>">
+                                <span class="level-badge">LV <?= (int) $persona['level'] ?></span>
+                                <span class="xp-bar"><span class="xp-fill" style="width: <?= (int) $persona['xp_pct'] ?>%"></span></span>
+                            </span>
+                        <?php endif; ?>
+                    </span>
                 </a>
             <?php endif; ?>
         </div>
@@ -313,12 +386,19 @@ function renderHeroLinks(?array $game): string
         </div>
     <?php endif; ?>
 
+    <?php if ($psnAuthError && !$needsSetup): ?>
+        <div class="error-banner"><?= e($psnAuthError) ?></div>
+    <?php endif; ?>
+
     <?php $heroInitial = strtoupper(mb_substr($current['name'] ?? '?', 0, 1)); ?>
     <section class="now-playing">
-        <div class="art-tile">
-            <span class="art-tile-fallback" data-art-fallback style="<?= empty($current['art']) ? '' : 'display:none' ?>"><?= e($heroInitial) ?></span>
-            <img data-art-img src="<?= e($current['art'] ?? '') ?>" data-fallback-src="<?= e($current['art_fallback'] ?? '') ?>" alt="Game art"
-                 style="<?= empty($current['art']) ? 'display:none' : '' ?>">
+        <div class="art-hover">
+            <div class="art-tile">
+                <span class="art-tile-fallback" data-art-fallback style="<?= empty($current['art']) ? '' : 'display:none' ?>"><?= e($heroInitial) ?></span>
+                <img data-art-img src="<?= e($current['art'] ?? '') ?>" data-fallback-src="<?= e($current['art_fallback'] ?? '') ?>" alt="Game art"
+                     style="<?= empty($current['art']) ? 'display:none' : '' ?>">
+            </div>
+            <?= renderTooltip($current['info'] ?? null, 'data-hero-tooltip') ?>
         </div>
         <div class="info">
             <div class="status-badge<?= !empty($current['playing']) ? ' live' : '' ?>" data-status-badge><?= heroStatus($current) ?></div>
@@ -330,15 +410,18 @@ function renderHeroLinks(?array $game): string
             <?php $ach = $current['achievements'] ?? null; ?>
             <div class="ach-progress" data-ach-wrap style="<?= $ach ? '' : 'display:none' ?>">
                 <div class="ach-bar"><div class="ach-fill" data-ach-fill style="width: <?= (int) ($ach['pct'] ?? 0) ?>%"></div></div>
-                <span class="ach-label" data-ach-label><?= $ach ? e($ach['unlocked'] . ' / ' . $ach['total'] . ' achievements · ' . $ach['pct'] . '%') : '' ?></span>
+                <span class="ach-label" data-ach-label><?= $ach ? e($ach['unlocked'] . ' / ' . $ach['total'] . ' ' . ($ach['noun'] ?? 'achievements') . ' · ' . $ach['pct'] . '%') : '' ?></span>
             </div>
             <div class="game-links" data-game-links><?= renderHeroLinks($current) ?></div>
         </div>
         <div class="prev-track" data-prev style="<?= $previous ? '' : 'display:none' ?>">
-            <div class="prev-track-thumb">
-                <span class="prev-track-thumb-fallback" data-prev-art-fallback style="<?= empty($previous['art']) ? '' : 'display:none' ?>"><?= e(strtoupper(mb_substr($previous['name'] ?? '?', 0, 1))) ?></span>
-                <img data-prev-art-img src="<?= e($previous['art'] ?? '') ?>" data-fallback-src="<?= e($previous['art_fallback'] ?? '') ?>" alt=""
-                     style="<?= empty($previous['art']) ? 'display:none' : '' ?>">
+            <div class="art-hover">
+                <div class="prev-track-thumb">
+                    <span class="prev-track-thumb-fallback" data-prev-art-fallback style="<?= empty($previous['art']) ? '' : 'display:none' ?>"><?= e(strtoupper(mb_substr($previous['name'] ?? '?', 0, 1))) ?></span>
+                    <img data-prev-art-img src="<?= e($previous['art'] ?? '') ?>" data-fallback-src="<?= e($previous['art_fallback'] ?? '') ?>" alt=""
+                         style="<?= empty($previous['art']) ? 'display:none' : '' ?>">
+                </div>
+                <?= renderTooltip($previous['info'] ?? null, 'data-prev-tooltip') ?>
             </div>
             <div class="prev-track-info">
                 <div class="prev-track-label">Previously played</div>
@@ -396,12 +479,12 @@ function renderHeroLinks(?array $game): string
         <section class="panel panel-wide retro-panel">
             <div class="panel-header-row">
                 <h2>RetroAchievements</h2>
-                <a class="retro-user" href="<?= e($retro['url']) ?>" target="_blank" rel="noopener">
+                <a class="platform-user" href="<?= e($retro['url']) ?>" target="_blank" rel="noopener">
                     <?php if ($retro['avatar']): ?><img src="<?= e($retro['avatar']) ?>" alt=""><?php endif; ?>
                     <?= e($retro['user']) ?>
                 </a>
             </div>
-            <div class="retro-stats">
+            <div class="platform-stats">
                 <div><strong><?= number_format($retro['points']) ?></strong><span>points</span></div>
                 <?php if ($retro['rank'] > 0): ?><div><strong>#<?= number_format($retro['rank']) ?></strong><span>rank</span></div><?php endif; ?>
                 <div><strong><?= number_format($retro['mastered']) ?></strong><span>mastered / completed</span></div>
@@ -410,7 +493,7 @@ function renderHeroLinks(?array $game): string
             <?php if (empty($retro['games'])): ?>
                 <p class="empty-state">No retro games played yet.</p>
             <?php else: ?>
-                <ul class="retro-games">
+                <ul class="platform-games">
                     <?php foreach ($retro['games'] as $g):
                         $possible = (int) ($g['NumPossibleAchievements'] ?? 0);
                         $achieved = (int) ($g['NumAchieved'] ?? 0);
@@ -420,12 +503,101 @@ function renderHeroLinks(?array $game): string
                             <a href="<?= e(RetroAchievements::gameUrl((int) ($g['GameID'] ?? 0))) ?>" target="_blank" rel="noopener">
                                 <img src="<?= e(RetroAchievements::media($g['ImageIcon'] ?? null)) ?>" alt="" loading="lazy">
                             </a>
-                            <div class="retro-game-meta">
+                            <div class="platform-game-meta">
                                 <div class="name"><?= e($g['Title'] ?? '') ?></div>
                                 <div class="sub"><?= e(($g['ConsoleName'] ?? '') . ' · ' . timeAgo(RetroAchievements::parseTime($g['LastPlayed'] ?? null))) ?></div>
                                 <?php if ($possible > 0): ?>
                                     <div class="bar"><div class="bar-fill" style="width: <?= $pct ?>%"></div></div>
                                     <div class="sub"><?= $achieved ?> / <?= $possible ?> achievements</div>
+                                <?php endif; ?>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </section>
+    <?php endif; ?>
+
+    <?php if ($xbox): ?>
+        <section class="panel panel-wide xbox-panel">
+            <div class="panel-header-row">
+                <h2>Xbox</h2>
+                <a class="platform-user" href="<?= e($xbox['url']) ?>" target="_blank" rel="noopener">
+                    <?php if ($xbox['account']['avatar']): ?><img src="<?= e($xbox['account']['avatar']) ?>" alt=""><?php endif; ?>
+                    <?= e($xbox['account']['gamertag']) ?>
+                </a>
+            </div>
+            <div class="platform-stats">
+                <div><strong><?= number_format($xbox['account']['gamerscore']) ?></strong><span>gamerscore</span></div>
+                <div><strong><?= number_format($xbox['played']) ?></strong><span>games played</span></div>
+                <?php if ($xbox['hours'] > 0): ?><div title="From Xbox's per-game MinutesPlayed stat — some older and PC titles don't report it"><strong><?= number_format($xbox['hours']) ?></strong><span>hours tracked</span></div><?php endif; ?>
+            </div>
+            <?php if (empty($xbox['games'])): ?>
+                <p class="empty-state">No Xbox games played yet.</p>
+            <?php else: ?>
+                <ul class="platform-games">
+                    <?php foreach ($xbox['games'] as $g):
+                        $devices = implode(' / ', array_unique(array_map([Xbox::class, 'deviceLabel'], $g['devices'])));
+                    ?>
+                        <li>
+                            <span class="art-hover">
+                                <a href="<?= e(Xbox::storeSearchUrl($g['name'])) ?>" target="_blank" rel="noopener">
+                                    <img src="<?= e($g['image']) ?>" alt="" loading="lazy">
+                                </a>
+                                <?= renderTooltip($library->xboxInfo($g, $g['name'])) ?>
+                            </span>
+                            <div class="platform-game-meta">
+                                <div class="name"><?= e($g['name']) ?></div>
+                                <div class="sub"><?= e(implode(' · ', array_filter([$devices, $g['minutes'] > 0 ? Library::formatMinutes($g['minutes']) : '', timeAgo($g['last_played'])]))) ?></div>
+                                <?php if ($g['gamerscore_total'] > 0): ?>
+                                    <div class="bar"><div class="bar-fill" style="width: <?= (int) $g['progress_pct'] ?>%"></div></div>
+                                    <div class="sub"><?= number_format($g['gamerscore']) ?> / <?= number_format($g['gamerscore_total']) ?> G<?= $g['game_pass'] ? ' · Game Pass' : '' ?></div>
+                                <?php endif; ?>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </section>
+    <?php endif; ?>
+
+    <?php if ($psn): ?>
+        <section class="panel panel-wide psn-panel">
+            <div class="panel-header-row">
+                <h2>PlayStation</h2>
+                <?php if ($psn['profile']): ?>
+                    <a class="platform-user" href="<?= e($psn['url']) ?>" target="_blank" rel="noopener">
+                        <?php if ($psn['profile']['avatar']): ?><img src="<?= e($psn['profile']['avatar']) ?>" alt=""><?php endif; ?>
+                        <?= e($psn['profile']['online_id']) ?><?= $psn['profile']['plus'] ? ' <span class="psn-plus" title="PlayStation Plus">+</span>' : '' ?>
+                    </a>
+                <?php endif; ?>
+            </div>
+            <div class="platform-stats">
+                <div title="<?= (int) $psn['summary']['level_progress'] ?>% of the way to the next level"><strong><?= number_format($psn['summary']['level']) ?></strong><span>trophy level</span></div>
+                <?php foreach (['platinum', 'gold', 'silver', 'bronze'] as $tier): ?>
+                    <div class="trophy-stat trophy-<?= $tier ?>"><strong><?= number_format($psn['summary']['trophies'][$tier]) ?></strong><span><?= $tier ?></span></div>
+                <?php endforeach; ?>
+                <div><strong><?= number_format($psn['played']) ?></strong><span>games played</span></div>
+                <?php if ($psn['hours'] > 0): ?><div title="PS4 and PS5 games only — Sony doesn't report playtime for older consoles"><strong><?= number_format($psn['hours']) ?></strong><span>hours played</span></div><?php endif; ?>
+            </div>
+            <?php if (empty($psn['games'])): ?>
+                <p class="empty-state">No PlayStation games played yet.</p>
+            <?php else: ?>
+                <ul class="platform-games">
+                    <?php foreach ($psn['games'] as $g): $t = $g['trophies']; ?>
+                        <li>
+                            <span class="art-hover">
+                                <a href="<?= e(PlayStation::storeSearchUrl($g['name'])) ?>" target="_blank" rel="noopener">
+                                    <img src="<?= e($g['image']) ?>" alt="" loading="lazy">
+                                </a>
+                                <?= renderTooltip($library->psnInfo($g)) ?>
+                            </span>
+                            <div class="platform-game-meta">
+                                <div class="name"><?= e($g['name']) ?></div>
+                                <div class="sub"><?= e(implode(' · ', array_filter([$g['platform'], $g['minutes'] > 0 ? Library::formatMinutes($g['minutes']) : '', timeAgo($g['last_played'])]))) ?></div>
+                                <?php if ($t && $t['defined_total'] > 0): ?>
+                                    <div class="bar"><div class="bar-fill" style="width: <?= (int) $t['progress'] ?>%"></div></div>
+                                    <div class="sub"><?= $t['earned_total'] ?> / <?= $t['defined_total'] ?> trophies<?= $t['earned']['platinum'] > 0 ? ' · <span class="trophy-platinum-text">Platinum</span>' : '' ?></div>
                                 <?php endif; ?>
                             </div>
                         </li>
@@ -477,6 +649,16 @@ function renderHeroLinks(?array $game): string
             <a href="https://steamcommunity.com/dev" target="_blank" rel="noopener" title="Steam Web API" aria-label="Steam Web API">
                 <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="<?= STEAM_LOGO ?>"/></svg>
             </a>
+            <?php if ($library && $library->xbox()->enabled()): ?>
+                <a href="https://xbl.io" target="_blank" rel="noopener" title="Xbox via OpenXBL" aria-label="Xbox via OpenXBL">
+                    <?= renderIcon('xbox', '') ?>
+                </a>
+            <?php endif; ?>
+            <?php if ($library && $library->psn()->enabled()): ?>
+                <a href="https://github.com/achievements-app/psn-api" target="_blank" rel="noopener" title="PlayStation via psn-api's endpoints" aria-label="PlayStation">
+                    <?= renderIcon('playstation', '') ?>
+                </a>
+            <?php endif; ?>
             <?php if ($library && $library->retro()->enabled()): ?>
                 <a href="https://api-docs.retroachievements.org" target="_blank" rel="noopener" title="RetroAchievements" aria-label="RetroAchievements">
                     <?= renderIcon('joystick', '') ?>

@@ -143,7 +143,10 @@ body {
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
 
+/* Takes the free width between the art and the previously-played card, so
+   the achievement bar (flex: 1) has room even when the text is short. */
 .now-playing .info {
+    flex: 1;
     min-width: 0;
 }
 
@@ -564,11 +567,19 @@ body {
 
 /* --- Insight widgets --- */
 
+/* Five across, so the ten widgets sit in exactly two rows at full width;
+   steps down on narrower screens so the cards stay readable. */
 .widget-grid {
     margin-top: 24px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+}
+
+@media (max-width: 960px) {
+    .widget-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
 }
 
 .widget-card {
@@ -1080,9 +1091,9 @@ body {
     }
 }
 
-/* --- RetroAchievements panel --- */
+/* --- Platform panels (RetroAchievements, Xbox) --- */
 
-.retro-user {
+.platform-user {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -1091,40 +1102,40 @@ body {
     font-size: 0.85rem;
 }
 
-.retro-user:hover {
+.platform-user:hover {
     color: var(--fg);
 }
 
-.retro-user img {
+.platform-user img {
     width: 24px;
     height: 24px;
     border-radius: 50%;
 }
 
-.retro-stats {
+.platform-stats {
     display: flex;
     flex-wrap: wrap;
     gap: 24px;
     margin-bottom: 18px;
 }
 
-.retro-stats div {
+.platform-stats div {
     display: flex;
     flex-direction: column;
 }
 
-.retro-stats strong {
+.platform-stats strong {
     font-size: 1.3rem;
 }
 
-.retro-stats span {
+.platform-stats span {
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--fg-dim);
 }
 
-.retro-games {
+.platform-games {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -1133,39 +1144,44 @@ body {
     gap: 14px;
 }
 
-.retro-games li {
+.platform-games li {
     display: flex;
     gap: 12px;
     align-items: flex-start;
     min-width: 0;
 }
 
-.retro-games img {
+.platform-games img {
     width: 48px;
     height: 48px;
     border-radius: 8px;
     display: block;
+    object-fit: cover;
+}
+
+/* RetroAchievements icons are pixel art — keep them crisp when scaled. */
+.retro-panel .platform-games img {
     image-rendering: pixelated;
 }
 
-.retro-game-meta {
+.platform-game-meta {
     flex: 1;
     min-width: 0;
 }
 
-.retro-game-meta .name {
+.platform-game-meta .name {
     font-size: 0.88rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.retro-game-meta .sub {
+.platform-game-meta .sub {
     font-size: 0.75rem;
     color: var(--fg-dim);
 }
 
-.retro-game-meta .bar {
+.platform-game-meta .bar {
     margin: 6px 0 2px;
 }
 
@@ -1425,3 +1441,105 @@ body {
 .platform-linux { background: #f5c242; }
 .platform-mac { background: #c7c7cc; }
 .platform-other { background: rgba(255, 255, 255, 0.25); }
+
+/* --- Hover info cards over game art (hero, previously played, list rows) --- */
+
+/* The wrapper anchors the tooltip; the tooltip is a sibling of the art
+   rather than a child, so the art's own overflow:hidden doesn't clip it. */
+.art-hover {
+    position: relative;
+    flex: none;
+}
+
+.game-row .art-hover {
+    display: block;
+}
+
+.art-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 10px;
+    width: max-content;
+    min-width: 200px;
+    max-width: 280px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #121216;
+    border: 1px solid var(--card-border);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(4px);
+    transition: opacity 150ms ease, transform 150ms ease;
+    z-index: 30;
+    text-align: left;
+}
+
+.art-hover:hover .art-tooltip {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Toggled by assets/app.js (positionArtTooltip) when there's no room above
+   the art, or when opening left-aligned would run off-screen. */
+.art-hover-below .art-tooltip {
+    bottom: auto;
+    top: 100%;
+    margin-bottom: 0;
+    margin-top: 10px;
+}
+
+.art-hover-right .art-tooltip {
+    left: auto;
+    right: 0;
+}
+
+/* See the mouseover handler in assets/app.js for why. */
+body.tooltip-open .now-playing,
+body.tooltip-open .panel {
+    backdrop-filter: none;
+}
+
+.art-tooltip-title {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--fg);
+    white-space: normal;
+}
+
+.art-tooltip-group {
+    display: block;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* The first group (developer / release / genres) reads as a subtitle
+   directly under the title, so it gets no divider. */
+.art-tooltip-title + .art-tooltip-group {
+    margin-top: 2px;
+    padding-top: 0;
+    border-top: none;
+}
+
+.art-tooltip-line {
+    display: block;
+    font-size: 0.74rem;
+    line-height: 1.45;
+    color: var(--fg-dim);
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.art-tooltip-group.accent .art-tooltip-line {
+    color: var(--accent);
+    font-weight: 600;
+    transition: color var(--color-transition);
+}
+
+.platform-games .art-hover {
+    display: block;
+}

@@ -22,6 +22,33 @@ return [
     'retroachievements_username' => '',
     'retroachievements_api_key'  => '',
 
+    // Optional — Xbox, covering Xbox consoles and PC games played through
+    // the Xbox app / PC Game Pass / Microsoft Store. Microsoft only opens
+    // its Xbox APIs to licensed game developers, so this uses OpenXBL
+    // (xbl.io), an unofficial third-party gateway: sign in there with your
+    // Microsoft account and copy your personal API key from
+    // https://xbl.io/dashboard. Leave blank to hide Xbox entirely.
+    //
+    // OpenXBL's free tier allows 150 requests/hour. XP Ledger stays well
+    // under that by checking Xbox presence (now playing) at most every
+    // xbox_presence_ttl seconds (minimum 60) and caching everything else
+    // for 15-60 minutes — roughly 40-50 requests/hour with the dashboard
+    // open all day. Raise xbox_presence_ttl if you share the key with
+    // anything else.
+    'openxbl_api_key'   => '',
+    'xbox_presence_ttl' => 120,
+
+    // Optional — PlayStation (PS4 / PS5). Sony has no public API, so this
+    // uses the same unofficial PlayStation App endpoints as the psn-api
+    // library. To get your NPSSO token: sign in at playstation.com in your
+    // browser, then open https://ca.account.sony.com/api/v1/ssocookie and
+    // copy the 64-character "npsso" value here. Treat it like a password —
+    // it signs in as you. It lasts about two months; when it expires the
+    // dashboard shows a banner asking for a new one. Leave blank to hide
+    // PlayStation entirely.
+    'psn_npsso'        => '',
+    'psn_presence_ttl' => 120,   // seconds between "now playing" checks (minimum 60)
+
     // Dashboard branding
     'app_name' => 'XP Ledger',
 

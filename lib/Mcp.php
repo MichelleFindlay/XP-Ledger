@@ -12,7 +12,7 @@ class Mcp
     private const WIDGET_TOOLS = [
         'unlock_clock'    => 'When achievements get unlocked, by local hour of day, from exact Steam unlock timestamps.',
         'weekly_rhythm'   => 'Playtime by weekday, a 12-week day-by-day grid, and the current daily play streak, from the playtime ledger.',
-        'time_translated' => 'Total lifetime playtime converted into films, flights, working weeks and other units.',
+        'time_translated' => 'Total lifetime playtime measured in gaming units: Super Mario Bros. speedruns, Minecraft and GTA V in-game days, Portal and Elden Ring playthroughs, Stardew Valley years, Games Done Quick marathons.',
         'loot_tiers'      => 'Most-played games ranked into legendary/epic/rare/uncommon tiers by playtime.',
         'pile_of_shame'   => 'Unplayed and barely-played game counts, the best-known unplayed games, and a rough backlog-clearing estimate.',
         'completionist'   => 'Achievement completion stats, perfect (100%) games, and the games closest to 100%.',
@@ -59,7 +59,7 @@ class Mcp
         $tools = [
             [
                 'name'        => 'get_now_playing',
-                'description' => 'The game being played right now (Steam, or RetroAchievements if configured) or the most recently played one, plus the game before it.',
+                'description' => 'The game being played right now (Steam, plus RetroAchievements, Xbox and PlayStation if configured) or the most recently played one, plus the game before it.',
                 'inputSchema' => $noArgs,
             ],
             [
@@ -129,6 +129,22 @@ class Mcp
             ];
         }
 
+        if ($this->library->xbox()->enabled()) {
+            $tools[] = [
+                'name'        => 'xbox_summary',
+                'description' => 'Xbox profile (gamertag, gamerscore), what is being played right now, and every Xbox / PC Game Pass title played with devices, last played date, gamerscore and achievement progress, and lifetime minutes where Xbox reports them.',
+                'inputSchema' => $noArgs,
+            ];
+        }
+
+        if ($this->library->psn()->enabled()) {
+            $tools[] = [
+                'name'        => 'playstation_summary',
+                'description' => 'PlayStation profile, trophy level and trophy counts, what is being played right now, and every PS4/PS5 game played with playtime, sessions, first/last played dates and trophy progress (plus PS3/Vita trophy lists).',
+                'inputSchema' => $noArgs,
+            ];
+        }
+
         foreach (self::WIDGET_TOOLS as $id => $description) {
             $tools[] = ['name' => 'widget_' . $id, 'description' => $description, 'inputSchema' => $noArgs];
         }
@@ -181,6 +197,10 @@ class Mcp
                 return array_map(fn($s) => ['label' => $s['label'], 'value' => $s['value']], $this->library->lifetimeStats());
             case 'retroachievements_summary':
                 return $this->retroSummary();
+            case 'xbox_summary':
+                return $this->xboxSummary();
+            case 'playstation_summary':
+                return $this->psnSummary();
             default:
                 throw new InvalidArgumentException('Unknown tool: ' . $name);
         }
@@ -354,6 +374,66 @@ class Mcp
             'note'     => 'Each entry is playtime Steam\'s counter advanced by between two snapshots; observed_at is when the snapshot saw it (the session ended at or shortly before then). Nothing before tracking_since is recorded.',
             'count'    => count($entries),
             'entries'  => $entries,
+        ];
+    }
+
+    private function xboxSummary(): array
+    {
+        $xbox = $this->library->xbox();
+        $account = $xbox->account();
+        if (!$account) {
+            return ['available' => false];
+        }
+
+        return [
+            'available'   => true,
+            'gamertag'    => $account['gamertag'],
+            'gamerscore'  => $account['gamerscore'],
+            'now_playing' => $xbox->nowPlaying(),
+            'note'        => 'minutes_played is Xbox\'s per-game MinutesPlayed stat; null means the game doesn\'t report it.',
+            'titles'      => array_values(array_map(fn($t) => [
+                'title_id'       => $t['title_id'],
+                'name'           => $t['name'],
+                'devices'        => array_values(array_unique(array_map([Xbox::class, 'deviceLabel'], $t['devices']))),
+                'game_pass'      => $t['game_pass'],
+                'last_played'    => $t['last_played'] > 0 ? date('c', $t['last_played']) : null,
+                'gamerscore'     => $t['gamerscore'] . '/' . $t['gamerscore_total'],
+                'achievements'   => $t['achievements'] . ($t['achievements_total'] > 0 ? '/' . $t['achievements_total'] : ''),
+                'progress_pct'   => $t['progress_pct'],
+                'minutes_played' => $t['minutes'] > 0 ? $t['minutes'] : null,
+            ], $xbox->titles())),
+        ];
+    }
+
+    private function psnSummary(): array
+    {
+        $psn = $this->library->psn();
+        $summary = $psn->trophySummary();
+        if (!$summary) {
+            return ['available' => false, 'auth_error' => $psn->authError()];
+        }
+        $profile = $psn->profile();
+
+        return [
+            'available'   => true,
+            'online_id'   => $profile['online_id'] ?? null,
+            'trophy_level' => $summary['level'],
+            'trophies'    => $summary['trophies'],
+            'now_playing' => $psn->nowPlaying(),
+            'note'        => 'minutes_played covers PS4/PS5 only; PS3/Vita games appear via their trophy lists without playtime.',
+            'games'       => array_values(array_map(fn($g) => [
+                'name'           => $g['name'],
+                'platform'       => $g['platform'],
+                'minutes_played' => $g['minutes'] > 0 ? $g['minutes'] : null,
+                'sessions'       => $g['play_count'] ?: null,
+                'first_played'   => $g['first_played'] > 0 ? date('c', $g['first_played']) : null,
+                'last_played'    => $g['last_played'] > 0 ? date('c', $g['last_played']) : null,
+                'trophies'       => $g['trophies'] ? [
+                    'progress_pct' => $g['trophies']['progress'],
+                    'earned'       => $g['trophies']['earned'],
+                    'defined'      => $g['trophies']['defined'],
+                ] : null,
+            ], $psn->games())),
         ];
     }
 

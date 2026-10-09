@@ -130,7 +130,8 @@ class Widgets
     }
 
     /**
-     * Total playtime, converted into things that aren't games.
+     * Total playtime, measured in other games' units: speedruns, in-game
+     * days, playthroughs and charity marathons.
      */
     public function timeTranslated(): array
     {
@@ -141,15 +142,20 @@ class Widgets
 
         // Each comparison shows a whole-unit count plus a progress bar for
         // the fraction towards the next one, same as lastfm-dash's
-        // Distance Listened. The big ones only appear once you've made a
-        // real dent, so nobody's told they're "0.01 PhDs" in.
+        // Distance Listened. The biggest only appears once you've made a
+        // real dent, so nobody's told they're "0.01 marathons" in.
+        //
+        // The day cycles are fixed game rules. Speedrun and playthrough
+        // lengths are rounded, typical figures (world-record pace, and
+        // HowLongToBeat-style main-story times), and the UI says so.
         $comparisons = [
-            ['label' => 'feature films (2 hours each)', 'unit_minutes' => 120],
-            ['label' => 'London → New York flights', 'unit_minutes' => 480],
-            ['label' => 'full 24-hour days', 'unit_minutes' => 1440],
-            ['label' => 'full-time working weeks (37.5 h)', 'unit_minutes' => 2250],
-            ['label' => 'trips to the Moon at highway speed', 'unit_minutes' => 230640, 'min_count' => 0.05],
-            ['label' => "full-time working years (about 1,700 h)", 'unit_minutes' => 102000, 'min_count' => 0.25],
+            ['label' => 'Super Mario Bros. world-record speedruns (~5 min)', 'unit_minutes' => 5],
+            ['label' => 'Minecraft day–night cycles (20 min)', 'unit_minutes' => 20],
+            ['label' => 'GTA V in-game days (48 min)', 'unit_minutes' => 48],
+            ['label' => 'Portal playthroughs (~3 h)', 'unit_minutes' => 180],
+            ['label' => 'Stardew Valley in-game years (~24 h)', 'unit_minutes' => 1440],
+            ['label' => 'Elden Ring main-story runs (~60 h)', 'unit_minutes' => 3600],
+            ['label' => 'Games Done Quick marathons (a week, non-stop)', 'unit_minutes' => 10080, 'min_count' => 0.25],
         ];
 
         $results = [];

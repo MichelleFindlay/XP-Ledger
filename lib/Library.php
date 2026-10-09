@@ -4,6 +4,8 @@ require_once __DIR__ . '/Steam.php';
 require_once __DIR__ . '/Ledger.php';
 require_once __DIR__ . '/Achievements.php';
 require_once __DIR__ . '/RetroAchievements.php';
+require_once __DIR__ . '/Xbox.php';
+require_once __DIR__ . '/PlayStation.php';
 
 /**
  * Pulls the per-platform clients together into the shapes the dashboard
@@ -32,16 +34,20 @@ class Library
     private Ledger $ledger;
     private Achievements $achievements;
     private RetroAchievements $retro;
+    private Xbox $xbox;
+    private PlayStation $psn;
     private array $config;
     private ?array $ownedCache = null;
     private bool $private = false;
 
-    public function __construct(Steam $steam, Ledger $ledger, Achievements $achievements, RetroAchievements $retro, array $config)
+    public function __construct(Steam $steam, Ledger $ledger, Achievements $achievements, RetroAchievements $retro, Xbox $xbox, PlayStation $psn, array $config)
     {
         $this->steam = $steam;
         $this->ledger = $ledger;
         $this->achievements = $achievements;
         $this->retro = $retro;
+        $this->xbox = $xbox;
+        $this->psn = $psn;
         $this->config = $config;
     }
 
@@ -54,7 +60,11 @@ class Library
         $steam = new Steam($config['steam_api_key'] ?? '', $config['steam_id'] ?? '', $cacheTtl ?? (int) ($config['cache_ttl'] ?? 120));
         $retro = new RetroAchievements($config['retroachievements_username'] ?? '', $config['retroachievements_api_key'] ?? '', (int) ($config['cache_ttl'] ?? 120));
 
-        return new self($steam, new Ledger($steam->steamId()), new Achievements($steam), $retro, $config);
+        $xbox = new Xbox($config['openxbl_api_key'] ?? '', (int) ($config['xbox_presence_ttl'] ?? 120));
+
+        $psn = new PlayStation($config['psn_npsso'] ?? '', (int) ($config['psn_presence_ttl'] ?? 120));
+
+        return new self($steam, new Ledger($steam->steamId()), new Achievements($steam), $retro, $xbox, $psn, $config);
     }
 
     public function steam(): Steam
@@ -75,6 +85,16 @@ class Library
     public function retro(): RetroAchievements
     {
         return $this->retro;
+    }
+
+    public function xbox(): Xbox
+    {
+        return $this->xbox;
+    }
+
+    public function psn(): PlayStation
+    {
+        return $this->psn;
     }
 
     public function timezone(): DateTimeZone
@@ -134,6 +154,23 @@ class Library
         $hours = $minutes / 60;
 
         return ($hours < 100 ? number_format($hours, 1) : number_format($hours)) . ' h';
+    }
+
+    public static function timeAgo(int $ts): string
+    {
+        if ($ts <= 0) {
+            return 'never';
+        }
+        $secs = max(0, time() - $ts);
+        foreach ([[86400 * 365, 'year'], [86400 * 30, 'month'], [86400 * 7, 'week'], [86400, 'day'], [3600, 'hour'], [60, 'minute']] as [$unit, $label]) {
+            if ($secs >= 120 && $secs >= $unit) {
+                $n = intdiv($secs, $unit);
+
+                return $n . ' ' . $label . ($n === 1 ? '' : 's') . ' ago';
+            }
+        }
+
+        return 'just now';
     }
 
     // --- Steam library ---
@@ -212,7 +249,97 @@ class Library
             'last_played'  => $g['last_played'] ?? 0,
             'achievements' => ($record && $record['has_stats']) ? ['unlocked' => $record['unlocked'], 'total' => $record['total']] : null,
             'url'          => Steam::storeUrl($appid),
+            'info'         => $this->steamInfo($appid, $g['name'] ?? ('App ' . $appid), $record && $record['has_stats'] ? $record : null),
         ];
+    }
+
+    /**
+     * The hover card shown over a game's art (hero, previously played,
+     * and every list row): who made it and when, your own numbers, and how
+     * the wider world rates it. Store details are read cache-only, so a
+     * tooltip never costs a live Store API call; a game whose details
+     * haven't been fetched yet (cron.php fills them in) just shows fewer
+     * lines.
+     *
+     * Shape: ['title' => string, 'groups' => [['lines' => string[], 'accent' => bool], ...]],
+     * rendered by renderTooltip() in index.php and fillTooltip() in
+     * assets/app.js.
+     */
+    private function steamInfo(int $appid, string $name, ?array $achievements): array
+    {
+        $g = $this->ownedGames()[$appid] ?? null;
+        $d = $appid > 0 ? $this->steam->appDetails($appid, true) : null;
+        if ($d !== null && !empty($d['unavailable'])) {
+            $d = null;
+        }
+
+        $groups = [];
+
+        $about = [];
+        if ($d) {
+            $byline = array_filter([
+                implode(', ', array_slice($d['developers'], 0, 2)),
+                $d['release_date'] !== '' ? 'Released ' . $d['release_date'] : '',
+            ]);
+            if ($byline) {
+                $about[] = implode(' · ', $byline);
+            }
+            $genres = array_slice(array_values(array_diff($d['genres'], self::GENRE_BLOCKLIST)), 0, 4);
+            if ($genres) {
+                $about[] = implode(' · ', $genres);
+            }
+        } elseif ($appid === 0) {
+            $about[] = 'Non-Steam game added to your library';
+        }
+        if ($about) {
+            $groups[] = ['lines' => $about, 'accent' => false];
+        }
+
+        $you = [];
+        if ($g) {
+            $you[] = $g['playtime'] > 0
+                ? self::formatMinutes($g['playtime']) . ' played' . ($g['playtime_2weeks'] > 0 ? ' · ' . self::formatMinutes($g['playtime_2weeks']) . ' in the last 2 weeks' : '')
+                : 'Never played';
+            if ($g['last_played'] > 0) {
+                $you[] = 'Last played ' . self::timeAgo($g['last_played']);
+            }
+
+            // Steam only splits playtime by OS from around 2018, so these
+            // are shares of the attributed hours, not of the lifetime total.
+            $os = array_filter(['Windows' => $g['windows'], 'Linux' => $g['linux'], 'macOS' => $g['mac']]);
+            $osTotal = array_sum($os);
+            if ($osTotal > 0 && count($os) > 1) {
+                arsort($os);
+                $you[] = 'On ' . implode(' · ', array_map(fn($k, $v) => $k . ' ' . round($v / $osTotal * 100) . '%', array_keys($os), $os));
+            } elseif ($osTotal > 0) {
+                $you[] = 'Played on ' . array_key_first($os);
+            }
+            if ($g['deck'] > 0) {
+                $you[] = self::formatMinutes($g['deck']) . ' on Steam Deck';
+            }
+        }
+        if ($achievements && $achievements['total'] > 0) {
+            $pct = (int) floor($achievements['unlocked'] / $achievements['total'] * 100);
+            $you[] = $achievements['unlocked'] >= $achievements['total']
+                ? 'All ' . $achievements['total'] . ' achievements — perfect game'
+                : $achievements['unlocked'] . ' / ' . $achievements['total'] . ' achievements (' . $pct . '%)';
+        }
+        if ($you) {
+            $groups[] = ['lines' => $you, 'accent' => true];
+        }
+
+        if ($d) {
+            $world = array_filter([
+                $d['recommendations'] > 0 ? number_format($d['recommendations']) . ' Steam reviews' : '',
+                $d['metacritic'] !== null ? 'Metacritic ' . $d['metacritic'] : '',
+                $d['is_free'] ? 'Free to play' : '',
+            ]);
+            if ($world) {
+                $groups[] = ['lines' => [implode(' · ', $world)], 'accent' => false];
+            }
+        }
+
+        return ['title' => $name, 'groups' => $groups];
     }
 
     /**
@@ -415,6 +542,18 @@ class Library
             }
         }
 
+        if ($this->xbox->enabled()) {
+            foreach ($this->xboxCards() as $card) {
+                $candidates[] = $card;
+            }
+        }
+
+        if ($this->psn->enabled()) {
+            foreach ($this->psnCards() as $card) {
+                $candidates[] = $card;
+            }
+        }
+
         // Playing beats not playing; otherwise most recent first.
         usort($candidates, function ($a, $b) {
             return [$b['playing'], $b['last_played']] <=> [$a['playing'], $a['last_played']];
@@ -500,6 +639,7 @@ class Library
             'achievements'    => $achievements,
             'presence'        => null,
             'links'           => $links,
+            'info'            => $this->steamInfo($appid, $name, $achievements),
         ];
     }
 
@@ -522,6 +662,28 @@ class Library
             $total = (int) ($progress['NumPossibleAchievements'] ?? $game['AchievementsTotal'] ?? 0);
             $unlocked = (int) ($progress['NumAchievedHardcore'] ?? 0) ?: (int) ($progress['NumAchieved'] ?? 0);
 
+            // RetroAchievements only includes developer/release/genre
+            // details for the single most recent game (LastGame).
+            $about = [(string) ($game['ConsoleName'] ?? '')];
+            $last = $summary['LastGame'] ?? null;
+            if ($i === 0 && $last && (int) ($last['ID'] ?? 0) === $gameId) {
+                $about[] = implode(' · ', array_filter([(string) ($last['Developer'] ?? ''), !empty($last['Released']) ? 'Released ' . substr((string) $last['Released'], 0, 4) : '']));
+                $about[] = (string) ($last['Genre'] ?? '');
+            }
+            $you = [];
+            if ($total > 0) {
+                $you[] = $unlocked . ' / ' . $total . ' achievements (' . (int) floor($unlocked / $total * 100) . '%)';
+                $you[] = number_format((int) ($progress['ScoreAchieved'] ?? 0)) . ' of ' . number_format((int) ($progress['PossibleScore'] ?? 0)) . ' points';
+            }
+            $lastPlayed = RetroAchievements::parseTime($game['LastPlayed'] ?? null);
+            if ($lastPlayed > 0) {
+                $you[] = 'Last played ' . self::timeAgo($lastPlayed);
+            }
+            $info = ['title' => (string) ($game['Title'] ?? ''), 'groups' => array_values(array_filter([
+                ['lines' => array_values(array_filter($about)), 'accent' => false],
+                ['lines' => $you, 'accent' => true],
+            ], fn($grp) => !empty($grp['lines'])))];
+
             $cards[] = [
                 'key'             => 'ra:' . $gameId,
                 'platform'        => 'retroachievements',
@@ -539,10 +701,217 @@ class Library
                 'achievements'    => $total > 0 ? ['unlocked' => $unlocked, 'total' => $total, 'pct' => (int) floor($unlocked / $total * 100)] : null,
                 'presence'        => $playing ? (string) ($summary['RichPresenceMsg'] ?? '') : null,
                 'links'           => [['kind' => 'store', 'label' => 'Game page', 'url' => RetroAchievements::gameUrl($gameId)]],
+                'info'            => $info,
             ];
         }
 
         return $cards;
+    }
+
+    /**
+     * Hero cards for Xbox: the game being played right now (from
+     * presence), then the two most recently played titles.
+     */
+    private function xboxCards(): array
+    {
+        $titles = $this->xbox->titles();
+        $playing = $this->xbox->nowPlaying();
+
+        $cards = [];
+        if ($playing) {
+            $cards[] = $this->xboxCard($titles[$playing['title_id']] ?? null, $playing['name'], true, $playing['device'], $playing['presence']);
+        }
+        foreach (array_slice($titles, 0, 3, true) as $id => $t) {
+            if (count($cards) >= 3) {
+                break;
+            }
+            if (!$playing || (string) $id !== $playing['title_id']) {
+                $cards[] = $this->xboxCard($t, $t['name'], false, null, null);
+            }
+        }
+
+        return $cards;
+    }
+
+    private function xboxCard(?array $t, string $name, bool $playing, ?string $device, ?string $presence): array
+    {
+        $devices = $t ? array_values(array_unique(array_map([Xbox::class, 'deviceLabel'], $t['devices']))) : [];
+        $platformLabel = 'Xbox' . ($device ? ' · ' . $device : ($devices ? ' · ' . implode(' / ', $devices) : ''));
+
+        $facts = [];
+        if ($t && $t['minutes'] > 0) {
+            $facts[] = self::formatMinutes($t['minutes']) . ' played';
+        }
+        if ($t && $t['gamerscore_total'] > 0) {
+            $facts[] = number_format($t['gamerscore']) . ' / ' . number_format($t['gamerscore_total']) . ' G';
+        }
+
+        // Xbox's title list doesn't always report an achievement total, so
+        // gamerscore progress is the more reliable completion figure.
+        $achievements = null;
+        if ($t && $t['achievements_total'] > 0) {
+            $achievements = ['unlocked' => $t['achievements'], 'total' => $t['achievements_total'], 'pct' => (int) floor($t['achievements'] / $t['achievements_total'] * 100)];
+        }
+
+        return [
+            'key'             => 'xbox:' . ($t['title_id'] ?? md5($name)),
+            'platform'        => 'xbox',
+            'platform_label'  => $platformLabel,
+            'id'              => $t['title_id'] ?? '',
+            'name'            => $name,
+            'subtitle'        => $t && $t['game_pass'] ? 'Game Pass' : '',
+            'art'             => $t['image'] ?? '',
+            'art_fallback'    => '',
+            'background'      => $t['image'] ?? '',
+            'playing'         => $playing,
+            'last_played'     => $playing ? time() : (int) ($t['last_played'] ?? 0),
+            'session_started' => null,
+            'facts'           => $facts,
+            'achievements'    => $achievements,
+            'presence'        => $presence,
+            'links'           => [['kind' => 'store', 'label' => 'Xbox Store', 'url' => Xbox::storeSearchUrl($name)]],
+            'info'            => $this->xboxInfo($t, $name, $playing),
+        ];
+    }
+
+    /**
+     * The hover card for an Xbox title (same shape as steamInfo()), shared
+     * by the now-playing card and the Xbox panel. Xbox's title list has no
+     * developer/genre/review data, so it's devices, Game Pass, and your
+     * own numbers.
+     */
+    public function xboxInfo(?array $t, string $name, bool $playing = false): array
+    {
+        $about = [];
+        $you = [];
+        if ($t) {
+            $devices = array_values(array_unique(array_map([Xbox::class, 'deviceLabel'], $t['devices'])));
+            $about[] = implode(' · ', array_filter([implode(' / ', $devices), $t['game_pass'] ? 'Game Pass' : '']));
+
+            if ($t['minutes'] > 0) {
+                $you[] = self::formatMinutes($t['minutes']) . ' played';
+            }
+            if ($t['gamerscore_total'] > 0) {
+                $you[] = number_format($t['gamerscore']) . ' of ' . number_format($t['gamerscore_total']) . ' gamerscore (' . $t['progress_pct'] . '%)';
+            }
+            if ($t['achievements'] > 0) {
+                $you[] = $t['achievements'] . ($t['achievements_total'] > 0 ? ' / ' . $t['achievements_total'] : '') . ' achievements';
+            }
+            if ($t['last_played'] > 0 && !$playing) {
+                $you[] = 'Last played ' . self::timeAgo($t['last_played']);
+            }
+        }
+
+        return ['title' => $name, 'groups' => array_values(array_filter([
+            ['lines' => array_values(array_filter($about)), 'accent' => false],
+            ['lines' => $you, 'accent' => true],
+        ], fn($g) => !empty($g['lines'])))];
+    }
+
+    /**
+     * Hero cards for PlayStation: the game being played right now (from
+     * presence), then the most recently played games.
+     */
+    private function psnCards(): array
+    {
+        $games = $this->psn->games();
+        $playing = $this->psn->nowPlaying();
+
+        $cards = [];
+        $playingKey = null;
+        if ($playing) {
+            $playingKey = PlayStation::normalize($playing['name']);
+            $g = $games[$playingKey] ?? null;
+            if ($g === null) {
+                // Presence knows the name, platform and icon even for a game
+                // that hasn't reached the played-games list yet.
+                $g = ['id' => $playing['id'], 'name' => $playing['name'], 'image' => $playing['image'], 'platform' => $playing['platform'],
+                      'minutes' => 0, 'play_count' => 0, 'first_played' => 0, 'last_played' => time(), 'trophies' => null];
+            }
+            $cards[] = $this->psnCard($g, true, $playing['platform']);
+        }
+        foreach ($games as $key => $g) {
+            if (count($cards) >= 3) {
+                break;
+            }
+            if ($key !== $playingKey) {
+                $cards[] = $this->psnCard($g, false, null);
+            }
+        }
+
+        return $cards;
+    }
+
+    private function psnCard(array $g, bool $playing, ?string $platform): array
+    {
+        $t = $g['trophies'];
+        $facts = [];
+        if ($g['minutes'] > 0) {
+            $facts[] = self::formatMinutes($g['minutes']) . ' played';
+        }
+        if ($t && $t['defined_total'] > 0) {
+            $facts[] = $t['earned_total'] . ' / ' . $t['defined_total'] . ' trophies' . ($t['earned']['platinum'] > 0 ? ' · Platinum' : '');
+        }
+
+        return [
+            'key'             => 'psn:' . PlayStation::normalize($g['name']),
+            'platform'        => 'playstation',
+            'platform_label'  => 'PlayStation · ' . ($platform ?: $g['platform']),
+            'id'              => $g['id'],
+            'name'            => $g['name'],
+            'subtitle'        => '',
+            'art'             => $g['image'],
+            'art_fallback'    => '',
+            'background'      => $g['image'],
+            'playing'         => $playing,
+            'last_played'     => $playing ? time() : $g['last_played'],
+            'session_started' => null,
+            'facts'           => $facts,
+            // Trophies stand in for achievements in the hero's progress bar,
+            // using Sony's own weighted progress percentage.
+            'achievements'    => $t && $t['defined_total'] > 0 ? ['unlocked' => $t['earned_total'], 'total' => $t['defined_total'], 'pct' => $t['progress'], 'noun' => 'trophies'] : null,
+            'presence'        => null,
+            'links'           => [['kind' => 'store', 'label' => 'PS Store', 'url' => PlayStation::storeSearchUrl($g['name'])]],
+            'info'            => $this->psnInfo($g, $playing),
+        ];
+    }
+
+    /**
+     * The hover card for a PlayStation game (same shape as steamInfo()),
+     * shared by the now-playing card and the PlayStation panel.
+     */
+    public function psnInfo(array $g, bool $playing = false): array
+    {
+        $about = [$g['platform']];
+        $you = [];
+        if ($g['minutes'] > 0) {
+            $you[] = self::formatMinutes($g['minutes']) . ' played' . ($g['play_count'] > 1 ? ' over ' . number_format($g['play_count']) . ' sessions' : '');
+        }
+        if ($g['first_played'] > 0) {
+            $you[] = 'First played ' . date('j M Y', $g['first_played']);
+        }
+        if ($g['last_played'] > 0 && !$playing) {
+            $you[] = 'Last played ' . self::timeAgo($g['last_played']);
+        }
+
+        $trophyLines = [];
+        $t = $g['trophies'];
+        if ($t && $t['defined_total'] > 0) {
+            $trophyLines[] = $t['earned_total'] . ' / ' . $t['defined_total'] . ' trophies (' . $t['progress'] . '%)';
+            $parts = [];
+            foreach (['platinum', 'gold', 'silver', 'bronze'] as $tier) {
+                if ($t['defined'][$tier] > 0) {
+                    $parts[] = ucfirst($tier) . ' ' . $t['earned'][$tier] . '/' . $t['defined'][$tier];
+                }
+            }
+            $trophyLines[] = implode(' · ', $parts);
+        }
+
+        return ['title' => $g['name'], 'groups' => array_values(array_filter([
+            ['lines' => array_values(array_filter($about)), 'accent' => false],
+            ['lines' => $you, 'accent' => true],
+            ['lines' => $trophyLines, 'accent' => false],
+        ], fn($grp) => !empty($grp['lines'])))];
     }
 
     /**
