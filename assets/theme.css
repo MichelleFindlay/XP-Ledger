@@ -717,3 +717,22 @@ html {
         transition: none;
     }
 }
+
+/* Twitch banner in the HUD style: display font, notched corners. */
+.twitch-live {
+    border-radius: 0;
+}
+
+.twitch-badge {
+    font-family: var(--font-display);
+    clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+
+.twitch-channel,
+.twitch-meta {
+    font-family: var(--font-display);
+}
+
+.twitch-player {
+    border: 1px solid rgba(145, 70, 255, 0.6);
+}

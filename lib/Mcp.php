@@ -186,7 +186,12 @@ class Mcp
             case 'get_now_playing':
                 $np = $this->library->nowPlaying();
 
-                return ['available' => $np['current'] !== null, 'current' => $np['current'], 'previous' => $np['previous']];
+                $result = ['available' => $np['current'] !== null, 'current' => $np['current'], 'previous' => $np['previous']];
+                if ($this->library->twitch()->enabled()) {
+                    $result['twitch_live'] = $this->library->twitch()->liveStream(); // null when offline
+                }
+
+                return $result;
             case 'list_games':
                 return $this->listGames($args);
             case 'top_games':

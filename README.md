@@ -55,6 +55,9 @@ and **RetroAchievements** if you want them.
     favourite games are.
   - **Where You Play**: lifetime hours split between Windows,
     Linux/SteamOS, macOS and Steam Deck.
+- **Twitch live banner** (optional): while your channel is live, a "Live on
+  Twitch" banner with the stream embedded appears at the top of the page,
+  and disappears when the stream ends.
 - **MCP server** (optional): lets an AI client query your library,
   playtime log and achievements directly.
 - **Self-update check** in the footer, against the latest GitHub release.
@@ -245,6 +248,30 @@ Nintendo panel and a `nintendo_summary` MCP tool. Things to know:
   Nintendo requests for 5 minutes.
 - Nintendo playtime doesn't feed the playtime ledger, Most Played or Genre
   Breakdown, which stay Steam-only.
+
+## Twitch (optional)
+
+When your Twitch channel is live, a banner appears at the top of the
+dashboard with the stream embedded (muted), its title, game, viewer count
+and how long you've been live. It updates on the dashboard's normal poll,
+so it appears and disappears without a reload.
+
+This uses Twitch's official API:
+
+1. Register an app at [dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps)
+   (any name; OAuth Redirect URL `http://localhost`; category "Website
+   Integration").
+2. Copy its **Client ID**, and create a **Client Secret**.
+3. Set `twitch_channel`, `twitch_client_id` and `twitch_client_secret` in
+   `config.php`.
+
+Live status is checked at most once a minute, well inside Twitch's limits.
+Set `twitch_embed_player` to `false` to show the banner with a preview image
+instead of the video player.
+
+Twitch only allows its player to be embedded on a domain name, so open the
+dashboard as `localhost` or your site's domain rather than a bare IP
+address. The rest of the banner works either way.
 
 ## RetroAchievements (optional)
 

@@ -1543,3 +1543,125 @@ body.tooltip-open .panel {
 .platform-games .art-hover {
     display: block;
 }
+
+/* --- Twitch live banner (top of the page, only while live) --- */
+
+.twitch-live {
+    --twitch: #9146ff;
+    display: grid;
+    grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+    gap: 22px;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 16px;
+    border-radius: var(--radius);
+    background: linear-gradient(120deg, rgba(145, 70, 255, 0.28), rgba(145, 70, 255, 0.06) 60%), rgba(10, 12, 18, 0.6);
+    border: 1px solid rgba(145, 70, 255, 0.55);
+    box-shadow: 0 0 32px rgba(145, 70, 255, 0.25);
+}
+
+/* display:grid above would otherwise override the hidden attribute. */
+.twitch-live[hidden] {
+    display: none;
+}
+
+.twitch-player {
+    aspect-ratio: 16 / 9;
+    background: #000;
+    overflow: hidden;
+}
+
+.twitch-player iframe,
+.twitch-player img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    object-fit: cover;
+}
+
+.twitch-info {
+    min-width: 0;
+}
+
+.twitch-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #fff;
+    background: #e91916;
+}
+
+.twitch-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fff;
+    animation: twitch-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes twitch-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+}
+
+.twitch-channel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--fg);
+    text-decoration: none;
+}
+
+.twitch-channel:hover {
+    text-decoration: underline;
+}
+
+.twitch-logo {
+    flex: none;
+    color: var(--twitch);
+}
+
+.twitch-title {
+    margin: 6px 0 4px;
+    font-size: 1rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.twitch-meta {
+    margin: 0 0 14px;
+    font-size: 0.82rem;
+    color: var(--fg-dim);
+}
+
+.twitch-sep {
+    margin: 0 4px;
+    opacity: 0.6;
+}
+
+.game-link-launch.twitch-watch,
+.game-link-launch.twitch-watch:hover {
+    background: var(--twitch);
+    box-shadow: 0 0 16px rgba(145, 70, 255, 0.5);
+}
+
+@media (max-width: 720px) {
+    .twitch-live {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .twitch-dot {
+        animation: none;
+    }
+}

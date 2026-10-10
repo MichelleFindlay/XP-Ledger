@@ -469,10 +469,75 @@
         });
     }
 
+    // --- Twitch live banner ---
+    // Shown only while the configured channel is live. The embedded player
+    // is created when the stream starts and removed when it ends (so it
+    // stops playing), rather than re-created on every poll.
+
+    var twitchEls = {
+        wrap: document.querySelector("[data-twitch]"),
+        player: document.querySelector("[data-twitch-player]"),
+        name: document.querySelector("[data-twitch-name]"),
+        title: document.querySelector("[data-twitch-title]"),
+        game: document.querySelector("[data-twitch-game]"),
+        viewers: document.querySelector("[data-twitch-viewers]"),
+        uptime: document.querySelector("[data-twitch-uptime]"),
+    };
+
+    function renderTwitch(live) {
+        var w = twitchEls.wrap;
+        if (!w) return;
+
+        if (!live) {
+            w.hidden = true;
+            if (twitchEls.player) twitchEls.player.innerHTML = "";
+            if (twitchEls.uptime) twitchEls.uptime.setAttribute("data-started", "0");
+            return;
+        }
+
+        setText(twitchEls.name, live.display_name);
+        setText(twitchEls.title, live.title);
+        setText(twitchEls.game, live.game);
+        setText(twitchEls.viewers, live.viewers.toLocaleString());
+        if (twitchEls.uptime) twitchEls.uptime.setAttribute("data-started", String(live.started_at));
+
+        if (twitchEls.player && !twitchEls.player.firstElementChild) {
+            if (w.getAttribute("data-embed") === "1") {
+                var frame = document.createElement("iframe");
+                frame.src = w.getAttribute("data-player-base");
+                frame.title = "Live on Twitch";
+                frame.allowFullscreen = true;
+                twitchEls.player.appendChild(frame);
+            } else if (live.thumbnail) {
+                var img = document.createElement("img");
+                img.alt = "Stream preview";
+                img.src = live.thumbnail + "?t=" + Date.now();
+                twitchEls.player.appendChild(img);
+            }
+        }
+
+        w.hidden = false;
+        updateTwitchUptime();
+    }
+
+    function updateTwitchUptime() {
+        var u = twitchEls.uptime;
+        if (!u) return;
+        var started = parseInt(u.getAttribute("data-started"), 10) || 0;
+        u.textContent = started ? formatDuration(Math.floor(Date.now() / 1000) - started) : "";
+    }
+
+    if (window.INITIAL_TWITCH) {
+        updateTwitchUptime();
+    }
+
     function poll() {
         fetch("api.php", { cache: "no-store" })
             .then(function (res) { return res.json(); })
             .then(function (data) {
+                if (data && "twitch" in data) {
+                    renderTwitch(data.twitch);
+                }
                 if (data && data.ok) {
                     renderGame(data.current);
                     renderPrevious(data.previous);
@@ -502,6 +567,7 @@
         setInterval(function () {
             updateElapsedLabel();
             if (currentGame && currentGame.playing) renderStatus();
+            updateTwitchUptime();
         }, 1000);
         setInterval(poll, config.pollIntervalMs);
     }

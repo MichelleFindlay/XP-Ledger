@@ -7,6 +7,7 @@ require_once __DIR__ . '/RetroAchievements.php';
 require_once __DIR__ . '/Xbox.php';
 require_once __DIR__ . '/PlayStation.php';
 require_once __DIR__ . '/Nintendo.php';
+require_once __DIR__ . '/Twitch.php';
 
 /**
  * Pulls the per-platform clients together into the shapes the dashboard
@@ -38,11 +39,12 @@ class Library
     private Xbox $xbox;
     private PlayStation $psn;
     private Nintendo $nintendo;
+    private Twitch $twitch;
     private array $config;
     private ?array $ownedCache = null;
     private bool $private = false;
 
-    public function __construct(Steam $steam, Ledger $ledger, Achievements $achievements, RetroAchievements $retro, Xbox $xbox, PlayStation $psn, Nintendo $nintendo, array $config)
+    public function __construct(Steam $steam, Ledger $ledger, Achievements $achievements, RetroAchievements $retro, Xbox $xbox, PlayStation $psn, Nintendo $nintendo, Twitch $twitch, array $config)
     {
         $this->steam = $steam;
         $this->ledger = $ledger;
@@ -51,6 +53,7 @@ class Library
         $this->xbox = $xbox;
         $this->psn = $psn;
         $this->nintendo = $nintendo;
+        $this->twitch = $twitch;
         $this->config = $config;
     }
 
@@ -69,7 +72,9 @@ class Library
 
         $nintendo = new Nintendo($config['nintendo_session_token'] ?? '', $config['nintendo_locale'] ?? 'en-US');
 
-        return new self($steam, new Ledger($steam->steamId()), new Achievements($steam), $retro, $xbox, $psn, $nintendo, $config);
+        $twitch = new Twitch($config['twitch_channel'] ?? '', $config['twitch_client_id'] ?? '', $config['twitch_client_secret'] ?? '');
+
+        return new self($steam, new Ledger($steam->steamId()), new Achievements($steam), $retro, $xbox, $psn, $nintendo, $twitch, $config);
     }
 
     public function steam(): Steam
@@ -105,6 +110,11 @@ class Library
     public function nintendo(): Nintendo
     {
         return $this->nintendo;
+    }
+
+    public function twitch(): Twitch
+    {
+        return $this->twitch;
     }
 
     public function timezone(): DateTimeZone

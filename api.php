@@ -34,13 +34,18 @@ try {
     // never let bookkeeping break the poll
 }
 
+// Twitch status rides along on every poll, game or no game, so the live
+// banner appears and disappears without a page reload.
+$twitch = $library->twitch()->enabled() ? $library->twitch()->liveStream() : null;
+
 if (!$nowPlaying['current']) {
-    echo json_encode(['ok' => false]);
+    echo json_encode(['ok' => false, 'twitch' => $twitch]);
     exit;
 }
 
 echo json_encode([
     'ok'       => true,
+    'twitch'   => $twitch,
     'current'  => $nowPlaying['current'],
     'previous' => $nowPlaying['previous'],
     'stats'    => array_map(fn($s) => $s['value'], $library->lifetimeStats()),

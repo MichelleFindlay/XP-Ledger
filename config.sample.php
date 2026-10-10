@@ -64,6 +64,19 @@ return [
     'nintendo_session_token' => '',
     'nintendo_locale'        => 'en-US',
 
+    // Optional — Twitch. When the channel below is live, a "Live on Twitch"
+    // banner (with the stream embedded, muted) appears at the top of the
+    // dashboard; it disappears again when the stream ends. Uses Twitch's
+    // official API: register a free app at https://dev.twitch.tv/console/apps
+    // (any name, OAuth Redirect URL http://localhost, category "Website
+    // Integration") and copy its Client ID and a Client Secret here. Leave
+    // any of the three blank to turn this off. Set twitch_embed_player to
+    // false to show the banner without the video player.
+    'twitch_channel'       => '',   // channel name, e.g. 'yourname' (a twitch.tv URL also works)
+    'twitch_client_id'     => '',
+    'twitch_client_secret' => '',
+    'twitch_embed_player'  => true,
+
     // Dashboard branding
     'app_name' => 'XP Ledger',
 
