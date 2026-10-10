@@ -126,6 +126,19 @@ if ($library->psn()->enabled()) {
     }
 }
 
+// Nintendo play history, for the same reason.
+if ($library->nintendo()->enabled()) {
+    try {
+        $notes[] = sprintf('nintendo: %d game(s)', count($library->nintendo()->games()));
+        if ($library->nintendo()->authError()) {
+            $notes[] = 'nintendo sign-in failing — run nintendo-link.php again';
+        }
+        $refreshed[] = 'nintendo';
+    } catch (Throwable $e) {
+        $failed[] = 'nintendo';
+    }
+}
+
 // Keeps the now-playing session timer alive between dashboard visits.
 try {
     $library->nowPlaying();

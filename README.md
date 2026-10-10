@@ -7,8 +7,8 @@ breakdown, lifetime stats and a set of fun data-driven insight widgets, all
 themed live from the current game's art.
 
 It pulls from **Steam**, plus **Xbox** (consoles and PC Game Pass / Xbox
-app games), **PlayStation** (PS4 / PS5) and **RetroAchievements** if you
-want them.
+app games), **PlayStation** (PS4 / PS5), **Nintendo** (Switch / Switch 2)
+and **RetroAchievements** if you want them.
 
 ## Features
 
@@ -30,6 +30,8 @@ want them.
   progress.
 - **PlayStation panel** (optional): trophy level, platinum/gold/silver/bronze
   counts, hours played, and recent games with playtime and trophy progress.
+- **Nintendo panel** (optional): hours played, games played, the last 7 days
+  as a bar chart, and recent games with playtime and days played.
 - **RetroAchievements panel** (optional): points, rank, mastered/beaten
   counts and recent retro games with progress bars.
 - **Lifetime Stats**: games owned, hours played, share of the library
@@ -210,6 +212,40 @@ You get PlayStation games in the Now Playing card, a PlayStation panel and a
 - PlayStation playtime doesn't feed the playtime ledger, Most Played or
   Genre Breakdown, which stay Steam-only.
 
+## Nintendo (optional)
+
+Nintendo has no public API, so XP Ledger reads the play history behind the
+"Play Activity" screen in Nintendo's own Nintendo Store app, signing in the
+same way that app does. To connect:
+
+1. Open `nintendo-link.php` in your browser (or run `php nintendo-link.php`).
+2. Click **Sign in to Nintendo** and sign in. Nintendo will say it's linking
+   to "Nintendo Store"; that's the app whose sign-in this uses.
+3. On the **Select this account** page, don't click the button. Right-click it
+   and choose **Copy link address**, then paste that link into the helper.
+4. Copy the `nintendo_session_token` line it gives you into `config.php`.
+
+The session token lasts about two years. Treat it like a password: it signs
+in as you. The helper stores nothing on the server, so it's safe to leave in
+place, but you can delete it once you're connected. If the token stops
+working, the dashboard shows a banner and you run the helper again.
+
+You get Nintendo games in the Now Playing card (as **last played**), a
+Nintendo panel and a `nintendo_summary` MCP tool. Things to know:
+
+- **There's no "now playing".** Nintendo only publishes live status through
+  the Nintendo Switch Online app, which needs a third-party token service to
+  call, so XP Ledger doesn't use it. Play history also updates a while after
+  a session ends, not during it.
+- **No achievements**, since Nintendo doesn't have them.
+- **Games played on both Switch and Switch 2** are merged into one entry.
+- **3DS / Wii U games** appear if Nintendo has them on record, usually
+  without playtime.
+- History is cached 15 minutes. Failures show the last good data and pause
+  Nintendo requests for 5 minutes.
+- Nintendo playtime doesn't feed the playtime ledger, Most Played or Genre
+  Breakdown, which stay Steam-only.
+
 ## RetroAchievements (optional)
 
 Set `retroachievements_username` and `retroachievements_api_key` (from
@@ -244,6 +280,7 @@ claude mcp add --transport http xp-ledger https://yourdomain.com/mcp.php \
 | `lifetime_stats` | The Lifetime Stats panel's totals |
 | `xbox_summary` | Only when Xbox is configured: profile, now playing, every title with gamerscore and playtime |
 | `playstation_summary` | Only when PlayStation is configured: trophy level and counts, now playing, every game with playtime and trophy progress |
+| `nintendo_summary` | Only when Nintendo is configured: every game with minutes, days played, first/last played, and the last 7 days |
 | `retroachievements_summary` | Only when RetroAchievements is configured |
 | `widget_*` | One tool per insight widget |
 
@@ -253,7 +290,7 @@ identical to lastfm-dash's. See its README for step-by-step instructions.
 ## Adding another platform
 
 Each platform is its own small client in `lib/` (`Steam.php`, `Xbox.php`,
-`PlayStation.php`, `RetroAchievements.php`). `Library::nowPlaying()` merges them into one
+`PlayStation.php`, `Nintendo.php`, `RetroAchievements.php`). `Library::nowPlaying()` merges them into one
 shared card shape (`steamCard()` / `xboxCard()` / `retroCards()`), so
 another source with a usable API can be added by writing a client and a
 `...Cards()` method that returns the same shape.

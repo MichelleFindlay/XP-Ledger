@@ -49,6 +49,21 @@ return [
     'psn_npsso'        => '',
     'psn_presence_ttl' => 120,   // seconds between "now playing" checks (minimum 60)
 
+    // Optional — Nintendo (Switch, Switch 2, and older 3DS / Wii U titles
+    // Nintendo has on record). Nintendo has no public API, so this uses the
+    // play history behind the "Play Activity" screen in Nintendo's own
+    // Nintendo Store app. To connect, open nintendo-link.php in your browser
+    // (or run `php nintendo-link.php`), sign in to your Nintendo Account,
+    // and paste the session token it gives you here. Treat it like a
+    // password — it signs in as you. It lasts about two years.
+    //
+    // There's no "now playing" for Nintendo (Nintendo only publishes live
+    // status through the Switch Online app), and play history updates a
+    // while after you stop playing. nintendo_locale sets the language of
+    // game names. Leave the token blank to hide Nintendo entirely.
+    'nintendo_session_token' => '',
+    'nintendo_locale'        => 'en-US',
+
     // Dashboard branding
     'app_name' => 'XP Ledger',
 

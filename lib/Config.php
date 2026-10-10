@@ -15,6 +15,8 @@ class Config
         'xbox_presence_ttl'            => 120,
         'psn_npsso'                    => '',
         'psn_presence_ttl'             => 120,
+        'nintendo_session_token'       => '',
+        'nintendo_locale'              => 'en-US',
         'app_name'                     => 'XP Ledger',
         'poll_interval_ms'             => 30000,
         'cache_ttl'                    => 120,

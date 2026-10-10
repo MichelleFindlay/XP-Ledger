@@ -55,6 +55,7 @@ const ICONS = [
     'play'           => '<polygon points="6 3 20 12 6 21 6 3"/>',
     // Brand mark (Simple Icons, CC0) — a filled shape, unlike the Lucide line icons above.
     'playstation'    => '<path fill="currentColor" stroke="none" d="M8.984 2.596v17.547l3.915 1.261V6.688c0-.69.304-1.151.794-.991.636.18.76.814.76 1.505v5.875c2.441 1.193 4.362-.002 4.362-3.152 0-3.237-1.126-4.675-4.438-5.827-1.307-.448-3.728-1.186-5.39-1.502zm4.656 16.241l6.296-2.275c.715-.258.826-.625.246-.818-.586-.192-1.637-.139-2.357.123l-4.205 1.5V14.98l.24-.085s1.201-.42 2.913-.615c1.696-.18 3.785.03 5.437.661 1.848.601 2.04 1.472 1.576 2.072-.465.6-1.622 1.036-1.622 1.036l-8.544 3.107V18.86zM1.807 18.6c-1.9-.545-2.214-1.668-1.352-2.32.801-.586 2.16-1.052 2.16-1.052l5.615-2.013v2.313L4.205 17c-.705.271-.825.632-.239.826.586.195 1.637.15 2.343-.12L8.247 17v2.074c-.12.03-.256.044-.39.073-1.939.331-3.996.196-6.038-.479z"/>',
+    'nintendo'       => '<path fill="currentColor" stroke="none" d="M14.176 24h3.674c3.376 0 6.15-2.774 6.15-6.15V6.15C24 2.775 21.226 0 17.85 0H14.1c-.074 0-.15.074-.15.15v23.7c-.001.076.075.15.226.15zm4.574-13.199c1.351 0 2.399 1.125 2.399 2.398 0 1.352-1.125 2.4-2.399 2.4-1.35 0-2.4-1.049-2.4-2.4-.075-1.349 1.05-2.398 2.4-2.398zM11.4 0H6.15C2.775 0 0 2.775 0 6.15v11.7C0 21.226 2.775 24 6.15 24h5.25c.074 0 .15-.074.15-.149V.15c.001-.076-.075-.15-.15-.15zM9.676 22.051H6.15c-2.326 0-4.201-1.875-4.201-4.201V6.15c0-2.326 1.875-4.201 4.201-4.201H9.6l.076 20.102zM3.75 7.199c0 1.275.975 2.25 2.25 2.25s2.25-.975 2.25-2.25c0-1.273-.975-2.25-2.25-2.25s-2.25.977-2.25 2.25z"/>',
     'xbox'           => '<path fill="currentColor" stroke="none" d="M4.102 21.033C6.211 22.881 8.977 24 12 24c3.026 0 5.789-1.119 7.902-2.967 1.877-1.912-4.316-8.709-7.902-11.417-3.582 2.708-9.779 9.505-7.898 11.417zm11.16-14.406c2.5 2.961 7.484 10.313 6.076 12.912C23.002 17.48 24 14.861 24 12.004c0-3.34-1.365-6.362-3.57-8.536 0 0-.027-.022-.082-.042-.063-.022-.152-.045-.281-.045-.592 0-1.985.434-4.805 3.246zM3.654 3.426c-.057.02-.082.041-.086.042C1.365 5.642 0 8.664 0 12.004c0 2.854.998 5.473 2.661 7.533-1.401-2.605 3.579-9.951 6.08-12.91-2.82-2.813-4.216-3.245-4.806-3.245-.131 0-.223.021-.281.046v-.002zM12 3.551S9.055 1.828 6.755 1.746c-.903-.033-1.454.295-1.521.339C7.379.646 9.659 0 11.984 0H12c2.334 0 4.605.646 6.766 2.085-.068-.046-.615-.372-1.52-.339C14.946 1.828 12 3.545 12 3.545v.006z"/>',
 ];
 
@@ -113,6 +114,8 @@ $retro = null;
 $xbox = null;
 $psn = null;
 $psnAuthError = null;
+$nintendo = null;
+$nintendoAuthError = null;
 $isPrivate = false;
 $apiError = false;
 
@@ -194,6 +197,23 @@ if ($library && $library->psn()->enabled()) {
             // Same rule as the Xbox panel: skip games with nothing to show.
             'games'   => array_slice(array_filter($psnGames, fn($g) => $g['minutes'] > 0 || ($g['trophies']['earned_total'] ?? 0) > 0), 0, 6),
             'url'     => $psnProfile ? PlayStation::profileUrl($psnProfile['online_id']) : 'https://www.playstation.com',
+        ];
+    }
+}
+
+if ($library && $library->nintendo()->enabled()) {
+    $nintendoGames = $library->nintendo()->games();
+    $nintendoAuthError = $library->nintendo()->authError();
+    if ($nintendoGames) {
+        $nintendoWeek = $library->nintendo()->recentDays();
+        $nintendo = [
+            'played'    => count($nintendoGames),
+            'hours'     => (int) round(array_sum(array_column($nintendoGames, 'minutes')) / 60),
+            'week'      => $nintendoWeek,
+            'week_mins' => array_sum(array_column($nintendoWeek, 'minutes')),
+            'max_mins'  => max(array_column($nintendoGames, 'minutes')),
+            // Same rule as the Xbox/PlayStation panels: skip games with nothing to show.
+            'games'     => array_slice(array_filter($nintendoGames, fn($g) => $g['minutes'] > 0), 0, 6),
         ];
     }
 }
@@ -388,6 +408,9 @@ function renderHeroLinks(?array $game): string
 
     <?php if ($psnAuthError && !$needsSetup): ?>
         <div class="error-banner"><?= e($psnAuthError) ?></div>
+    <?php endif; ?>
+    <?php if ($nintendoAuthError && !$needsSetup): ?>
+        <div class="error-banner"><?= e($nintendoAuthError) ?></div>
     <?php endif; ?>
 
     <?php $heroInitial = strtoupper(mb_substr($current['name'] ?? '?', 0, 1)); ?>
@@ -607,6 +630,60 @@ function renderHeroLinks(?array $game): string
         </section>
     <?php endif; ?>
 
+    <?php if ($nintendo): ?>
+        <section class="panel panel-wide nintendo-panel">
+            <div class="panel-header-row">
+                <h2>Nintendo</h2>
+            </div>
+            <div class="nintendo-top">
+                <div class="platform-stats">
+                    <div><strong><?= number_format($nintendo['hours']) ?></strong><span>hours played</span></div>
+                    <div><strong><?= number_format($nintendo['played']) ?></strong><span>games played</span></div>
+                    <div><strong><?= e(Library::formatMinutes($nintendo['week_mins'])) ?></strong><span>last 7 days</span></div>
+                </div>
+                <?php if ($nintendo['week']):
+                    $weekMax = max(1, max(array_column($nintendo['week'], 'minutes')));
+                ?>
+                    <div class="week-bars" aria-label="Minutes played each day over the last week">
+                        <?php foreach ($nintendo['week'] as $day):
+                            $tip = date('D j M', strtotime($day['date'])) . ': ' . ($day['minutes'] > 0 ? Library::formatMinutes($day['minutes']) : 'no play');
+                            foreach ($day['games'] as $dg) {
+                                $tip .= "\n" . $dg['name'] . ' — ' . Library::formatMinutes($dg['minutes']);
+                            }
+                        ?>
+                            <div class="week-bar-col" title="<?= e($tip) ?>">
+                                <div class="week-bar" style="height: <?= max(4, (int) round($day['minutes'] / $weekMax * 100)) ?>%"></div>
+                                <span><?= e(date('D', strtotime($day['date']))) ?></span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <?php if (empty($nintendo['games'])): ?>
+                <p class="empty-state">No Nintendo playtime recorded yet.</p>
+            <?php else: ?>
+                <ul class="platform-games">
+                    <?php foreach ($nintendo['games'] as $g): ?>
+                        <li>
+                            <span class="art-hover">
+                                <a href="<?= e(Nintendo::storeSearchUrl($g['name'])) ?>" target="_blank" rel="noopener">
+                                    <img src="<?= e($g['image']) ?>" alt="" loading="lazy">
+                                </a>
+                                <?= renderTooltip($library->nintendoInfo($g)) ?>
+                            </span>
+                            <div class="platform-game-meta">
+                                <div class="name"><?= e($g['name']) ?></div>
+                                <div class="sub"><?= e(implode(' · ', array_filter([implode(' / ', $g['platforms']), Library::formatMinutes($g['minutes']), timeAgo($g['last_played'])]))) ?></div>
+                                <div class="bar"><div class="bar-fill" style="width: <?= max(2, (int) round($g['minutes'] / max(1, $nintendo['max_mins']) * 100)) ?>%"></div></div>
+                                <div class="sub"><?= number_format($g['days']) ?> day<?= $g['days'] === 1 ? '' : 's' ?> played</div>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </section>
+    <?php endif; ?>
+
     <?php if (!$needsSetup): ?>
         <div class="widget-grid">
             <?php foreach ($widgetDefs as $w): ?>
@@ -657,6 +734,11 @@ function renderHeroLinks(?array $game): string
             <?php if ($library && $library->psn()->enabled()): ?>
                 <a href="https://github.com/achievements-app/psn-api" target="_blank" rel="noopener" title="PlayStation via psn-api's endpoints" aria-label="PlayStation">
                     <?= renderIcon('playstation', '') ?>
+                </a>
+            <?php endif; ?>
+            <?php if ($library && $library->nintendo()->enabled()): ?>
+                <a href="https://www.nintendo.com" target="_blank" rel="noopener" title="Nintendo play history" aria-label="Nintendo">
+                    <?= renderIcon('nintendo', '') ?>
                 </a>
             <?php endif; ?>
             <?php if ($library && $library->retro()->enabled()): ?>

@@ -59,7 +59,7 @@ class Mcp
         $tools = [
             [
                 'name'        => 'get_now_playing',
-                'description' => 'The game being played right now (Steam, plus RetroAchievements, Xbox and PlayStation if configured) or the most recently played one, plus the game before it.',
+                'description' => 'The game being played right now (Steam, plus RetroAchievements, Xbox and PlayStation if configured; Nintendo games appear as last played only, since Nintendo has no live presence) or the most recently played one, plus the game before it.',
                 'inputSchema' => $noArgs,
             ],
             [
@@ -145,6 +145,14 @@ class Mcp
             ];
         }
 
+        if ($this->library->nintendo()->enabled()) {
+            $tools[] = [
+                'name'        => 'nintendo_summary',
+                'description' => 'Nintendo play history (Switch, Switch 2, plus older 3DS / Wii U titles on record): every game with total minutes, days played, first/last played, and the last 7 days day by day. No live presence or achievements — Nintendo has neither here.',
+                'inputSchema' => $noArgs,
+            ];
+        }
+
         foreach (self::WIDGET_TOOLS as $id => $description) {
             $tools[] = ['name' => 'widget_' . $id, 'description' => $description, 'inputSchema' => $noArgs];
         }
@@ -201,6 +209,8 @@ class Mcp
                 return $this->xboxSummary();
             case 'playstation_summary':
                 return $this->psnSummary();
+            case 'nintendo_summary':
+                return $this->nintendoSummary();
             default:
                 throw new InvalidArgumentException('Unknown tool: ' . $name);
         }
@@ -434,6 +444,29 @@ class Mcp
                     'defined'      => $g['trophies']['defined'],
                 ] : null,
             ], $psn->games())),
+        ];
+    }
+
+    private function nintendoSummary(): array
+    {
+        $nintendo = $this->library->nintendo();
+        $games = $nintendo->games();
+        if (!$games) {
+            return ['available' => false, 'auth_error' => $nintendo->authError()];
+        }
+
+        return [
+            'available'   => true,
+            'note'        => 'Nintendo updates play history some time after a session ends; there is no live now-playing.',
+            'last_7_days' => $nintendo->recentDays(),
+            'games'       => array_values(array_map(fn($g) => [
+                'name'           => $g['name'],
+                'platforms'      => $g['platforms'],
+                'minutes_played' => $g['minutes'],
+                'days_played'    => $g['days'],
+                'first_played'   => $g['first_played'] > 0 ? date('c', $g['first_played']) : null,
+                'last_played'    => $g['last_played'] > 0 ? date('c', $g['last_played']) : null,
+            ], $games)),
         ];
     }
 

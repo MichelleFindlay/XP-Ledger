@@ -6,6 +6,7 @@ require_once __DIR__ . '/Achievements.php';
 require_once __DIR__ . '/RetroAchievements.php';
 require_once __DIR__ . '/Xbox.php';
 require_once __DIR__ . '/PlayStation.php';
+require_once __DIR__ . '/Nintendo.php';
 
 /**
  * Pulls the per-platform clients together into the shapes the dashboard
@@ -36,11 +37,12 @@ class Library
     private RetroAchievements $retro;
     private Xbox $xbox;
     private PlayStation $psn;
+    private Nintendo $nintendo;
     private array $config;
     private ?array $ownedCache = null;
     private bool $private = false;
 
-    public function __construct(Steam $steam, Ledger $ledger, Achievements $achievements, RetroAchievements $retro, Xbox $xbox, PlayStation $psn, array $config)
+    public function __construct(Steam $steam, Ledger $ledger, Achievements $achievements, RetroAchievements $retro, Xbox $xbox, PlayStation $psn, Nintendo $nintendo, array $config)
     {
         $this->steam = $steam;
         $this->ledger = $ledger;
@@ -48,6 +50,7 @@ class Library
         $this->retro = $retro;
         $this->xbox = $xbox;
         $this->psn = $psn;
+        $this->nintendo = $nintendo;
         $this->config = $config;
     }
 
@@ -64,7 +67,9 @@ class Library
 
         $psn = new PlayStation($config['psn_npsso'] ?? '', (int) ($config['psn_presence_ttl'] ?? 120));
 
-        return new self($steam, new Ledger($steam->steamId()), new Achievements($steam), $retro, $xbox, $psn, $config);
+        $nintendo = new Nintendo($config['nintendo_session_token'] ?? '', $config['nintendo_locale'] ?? 'en-US');
+
+        return new self($steam, new Ledger($steam->steamId()), new Achievements($steam), $retro, $xbox, $psn, $nintendo, $config);
     }
 
     public function steam(): Steam
@@ -95,6 +100,11 @@ class Library
     public function psn(): PlayStation
     {
         return $this->psn;
+    }
+
+    public function nintendo(): Nintendo
+    {
+        return $this->nintendo;
     }
 
     public function timezone(): DateTimeZone
@@ -554,6 +564,12 @@ class Library
             }
         }
 
+        if ($this->nintendo->enabled()) {
+            foreach ($this->nintendoCards() as $card) {
+                $candidates[] = $card;
+            }
+        }
+
         // Playing beats not playing; otherwise most recent first.
         usort($candidates, function ($a, $b) {
             return [$b['playing'], $b['last_played']] <=> [$a['playing'], $a['last_played']];
@@ -912,6 +928,64 @@ class Library
             ['lines' => $you, 'accent' => true],
             ['lines' => $trophyLines, 'accent' => false],
         ], fn($grp) => !empty($grp['lines'])))];
+    }
+
+    /**
+     * Hero cards for Nintendo: the two most recently played games. Never
+     * "playing" — Nintendo's play history has no live presence, and it's
+     * updated after a session ends, not during it.
+     */
+    private function nintendoCards(): array
+    {
+        $cards = [];
+        foreach (array_slice($this->nintendo->games(), 0, 2) as $g) {
+            $cards[] = [
+                'key'             => 'nintendo:' . ($g['id'] ?: md5($g['name'])),
+                'platform'        => 'nintendo',
+                'platform_label'  => 'Nintendo · ' . implode(' / ', $g['platforms']),
+                'id'              => $g['id'],
+                'name'            => $g['name'],
+                'subtitle'        => '',
+                'art'             => $g['image'],
+                'art_fallback'    => '',
+                'background'      => $g['image'],
+                'playing'         => false,
+                'last_played'     => $g['last_played'],
+                'session_started' => null,
+                'facts'           => $g['minutes'] > 0 ? [self::formatMinutes($g['minutes']) . ' played over ' . number_format($g['days']) . ' day' . ($g['days'] === 1 ? '' : 's')] : [],
+                'achievements'    => null,
+                'presence'        => null,
+                'links'           => [['kind' => 'store', 'label' => 'Nintendo eShop', 'url' => Nintendo::storeSearchUrl($g['name'])]],
+                'info'            => $this->nintendoInfo($g),
+            ];
+        }
+
+        return $cards;
+    }
+
+    /**
+     * The hover card for a Nintendo game (same shape as steamInfo()).
+     */
+    public function nintendoInfo(array $g): array
+    {
+        $you = [];
+        if ($g['minutes'] > 0) {
+            $you[] = self::formatMinutes($g['minutes']) . ' played';
+            if ($g['days'] > 0) {
+                $you[] = 'Played on ' . number_format($g['days']) . ' day' . ($g['days'] === 1 ? '' : 's') . ' · ' . self::formatMinutes($g['minutes'] / $g['days']) . ' a day on average';
+            }
+        }
+        if ($g['first_played'] > 0) {
+            $you[] = 'First played ' . date('j M Y', $g['first_played']);
+        }
+        if ($g['last_played'] > 0) {
+            $you[] = 'Last played ' . self::timeAgo($g['last_played']);
+        }
+
+        return ['title' => $g['name'], 'groups' => array_values(array_filter([
+            ['lines' => [implode(' / ', $g['platforms'])], 'accent' => false],
+            ['lines' => $you, 'accent' => true],
+        ], fn($grp) => !empty(array_filter($grp['lines']))))];
     }
 
     /**
