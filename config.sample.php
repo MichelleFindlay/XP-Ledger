@@ -77,6 +77,11 @@ return [
     'twitch_client_secret' => '',
     'twitch_embed_player'  => true,
 
+    // The public domain this dashboard is served on, for the footer's DNSSEC
+    // and Security Headers checks — e.g. 'games.example.com'. Leave blank to
+    // use whatever hostname the page was requested on.
+    'site_domain' => '',
+
     // Dashboard branding
     'app_name' => 'XP Ledger',
 

@@ -1665,3 +1665,57 @@ body.tooltip-open .panel {
         animation: none;
     }
 }
+
+/* --- Strict-CSP support --- */
+
+/* Elements are shown/hidden with the hidden attribute rather than inline
+   styles (see lib/Security.php). Author display rules (flex, grid…) would
+   otherwise beat the browser's own [hidden] rule. */
+[hidden] {
+    display: none !important;
+}
+
+/* --- Footer site checks (DNSSEC, Security Headers) --- */
+
+.site-checks {
+    margin-top: 6px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.site-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--fg-dim);
+    text-decoration: none;
+}
+
+a.site-check[href]:hover {
+    color: var(--fg);
+}
+
+.check-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.check-ok .check-icon {
+    color: #0b1a0f;
+    background: #4cd964;
+    box-shadow: 0 0 6px rgba(76, 217, 100, 0.6);
+}
+
+.check-fail .check-icon {
+    color: #fff;
+    background: #e5484d;
+}

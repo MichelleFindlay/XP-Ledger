@@ -12,6 +12,9 @@
 header('Content-Type: application/json');
 
 require __DIR__ . '/lib/Config.php';
+require __DIR__ . '/lib/Security.php';
+
+Security::sendHeaders('api');
 require __DIR__ . '/lib/Library.php';
 
 $config = Config::load();

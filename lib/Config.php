@@ -21,6 +21,7 @@ class Config
         'twitch_client_id'             => '',
         'twitch_client_secret'         => '',
         'twitch_embed_player'          => true,
+        'site_domain'                  => '',
         'app_name'                     => 'XP Ledger',
         'poll_interval_ms'             => 30000,
         'cache_ttl'                    => 120,

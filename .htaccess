@@ -31,3 +31,16 @@
 <IfModule mod_alias.c>
     RedirectMatch 404 ^/(.*/)?cache/
 </IfModule>
+
+# Security headers for static files (CSS, JS, images). PHP pages send
+# their own — including a per-request CSP nonce — from lib/Security.php,
+# so this only matches non-PHP files, to avoid overriding that policy.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js|svg|png|jpe?g|gif|webp|ico|woff2?)$">
+        Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        Header always set X-Content-Type-Options "nosniff"
+        Header always set X-Frame-Options "SAMEORIGIN"
+        Header always set Referrer-Policy "strict-origin-when-cross-origin"
+        Header always set Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+    </FilesMatch>
+</IfModule>

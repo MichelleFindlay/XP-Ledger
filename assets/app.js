@@ -59,13 +59,58 @@
                 imgEl.src = next;
                 return;
             }
-            imgEl.style.display = "none";
-            if (fallbackEl) fallbackEl.style.display = "";
+            imgEl.hidden = true;
+            if (fallbackEl) fallbackEl.hidden = false;
         });
     }
 
+    // The strict Content-Security-Policy (lib/Security.php) blocks inline
+    // style="" attributes and onerror="" handlers, so the server renders
+    // sizes and colours as data attributes and they're applied here —
+    // CSP doesn't restrict styles set from script.
+    function applyDataStyles(root) {
+        (root || document).querySelectorAll("[data-w], [data-h], [data-bg]").forEach(function (node) {
+            if (node.hasAttribute("data-w")) node.style.width = node.getAttribute("data-w") + "%";
+            if (node.hasAttribute("data-h")) node.style.height = node.getAttribute("data-h") + "%";
+            if (node.hasAttribute("data-bg")) node.style.background = node.getAttribute("data-bg");
+        });
+    }
+
+    applyDataStyles(document);
+
+    // Broken list thumbnails swap to their letter placeholder, and broken
+    // platform-panel images are hidden. Error events don't bubble, hence the
+    // capture-phase listener on the document.
+    function handleBrokenImage(img) {
+        if (img.hasAttribute("data-fallback-sibling")) {
+            img.hidden = true;
+            if (img.nextElementSibling) img.nextElementSibling.hidden = false;
+        } else if (img.hasAttribute("data-hide-on-error")) {
+            img.hidden = true;
+        }
+    }
+
+    document.addEventListener("error", function (evt) {
+        if (evt.target && evt.target.tagName === "IMG") handleBrokenImage(evt.target);
+    }, true);
+
+    // An image can fail before this script runs, in which case its error
+    // event has already fired; catch those by checking them now.
+    function isBroken(img) {
+        return img.getAttribute("src") && img.complete && img.naturalWidth === 0;
+    }
+
+    document.querySelectorAll("img[data-fallback-sibling], img[data-hide-on-error]").forEach(function (img) {
+        if (isBroken(img)) handleBrokenImage(img);
+    });
+
     attachArtFallback(els.artImg, els.artFallback);
     attachArtFallback(els.prevArtImg, els.prevArtFallback);
+    [[els.artImg, els.artFallback], [els.prevArtImg, els.prevArtFallback]].forEach(function (pair) {
+        if (pair[0] && !pair[0].hidden && isBroken(pair[0])) {
+            pair[0].dispatchEvent(new Event("error"));
+        }
+    });
 
     function setArt(imgEl, fallbackEl, url, fallbackUrl, name) {
         if (!imgEl) {
@@ -79,11 +124,11 @@
             if (imgEl.getAttribute("src") !== url) {
                 imgEl.src = url;
             }
-            imgEl.style.display = "";
-            if (fallbackEl) fallbackEl.style.display = "none";
+            imgEl.hidden = false;
+            if (fallbackEl) fallbackEl.hidden = true;
         } else {
-            imgEl.style.display = "none";
-            if (fallbackEl) fallbackEl.style.display = "";
+            imgEl.hidden = true;
+            if (fallbackEl) fallbackEl.hidden = false;
         }
     }
 
@@ -296,11 +341,10 @@
     function fillTooltip(tooltip, info) {
         if (!tooltip) return;
         tooltip.innerHTML = "";
+        tooltip.hidden = !info;
         if (!info) {
-            tooltip.style.display = "none";
             return;
         }
-        tooltip.style.display = "";
         tooltip.appendChild(el("span", "art-tooltip-title", info.title));
         (info.groups || []).forEach(function (group) {
             var g = el("span", "art-tooltip-group" + (group.accent ? " accent" : ""));
@@ -323,7 +367,7 @@
     // (the previously-played thumb sits at the far right of the hero).
     function positionArtTooltip(wrapper) {
         var tooltip = wrapper.querySelector(".art-tooltip");
-        if (!tooltip || tooltip.style.display === "none") return;
+        if (!tooltip || tooltip.hidden) return;
 
         var rect = wrapper.getBoundingClientRect();
         wrapper.classList.toggle("art-hover-below", rect.top - tooltip.offsetHeight - 20 < 0);
@@ -423,12 +467,12 @@
 
         if (els.presence) {
             setText(els.presence, game.presence);
-            els.presence.style.display = game.presence ? "" : "none";
+            els.presence.hidden = !game.presence;
         }
 
         if (els.achWrap) {
             var ach = game.achievements;
-            els.achWrap.style.display = ach ? "" : "none";
+            els.achWrap.hidden = !ach;
             if (ach) {
                 els.achFill.style.width = ach.pct + "%";
                 setText(els.achLabel, ach.unlocked + " / " + ach.total + " " + (ach.noun || "achievements") + " · " + ach.pct + "%");
@@ -449,10 +493,10 @@
     function renderPrevious(prev) {
         if (!els.prevWrap) return;
         if (!prev) {
-            els.prevWrap.style.display = "none";
+            els.prevWrap.hidden = true;
             return;
         }
-        els.prevWrap.style.display = "";
+        els.prevWrap.hidden = false;
         setArt(els.prevArtImg, els.prevArtFallback, prev.art, prev.art_fallback, prev.name);
         setText(els.prevName, prev.name);
         setText(els.prevMeta, prev.platform_label + " · " + timeAgo(prev.last_played));
@@ -506,6 +550,7 @@
                 var frame = document.createElement("iframe");
                 frame.src = w.getAttribute("data-player-base");
                 frame.title = "Live on Twitch";
+                frame.allow = "autoplay; fullscreen";
                 frame.allowFullscreen = true;
                 twitchEls.player.appendChild(frame);
             } else if (live.thumbnail) {
@@ -529,6 +574,53 @@
 
     if (window.INITIAL_TWITCH) {
         updateTwitchUptime();
+    }
+
+    // --- Footer: security headers check ---
+    // Fetches headers-check.php (which sends the same headers as this page)
+    // and checks what actually arrived, so a proxy or CDN that strips or
+    // adds headers is reflected. Same-origin, so every header is readable.
+
+    var REQUIRED_HEADERS = [
+        "strict-transport-security",
+        "content-security-policy",
+        "x-frame-options",
+        "x-content-type-options",
+        "referrer-policy",
+        "permissions-policy",
+    ];
+
+    function setSiteCheck(node, ok, title) {
+        if (!node) return;
+        node.classList.remove("check-pending");
+        node.classList.toggle("check-ok", ok);
+        node.classList.toggle("check-fail", !ok);
+        node.title = title;
+        var icon = node.querySelector(".check-icon");
+        if (icon) icon.textContent = ok ? "✓" : "✗";
+    }
+
+    var headersCheck = document.querySelector('[data-site-check="headers"]');
+    if (headersCheck) {
+        fetch("headers-check.php", { method: "HEAD", cache: "no-store" })
+            .then(function (res) {
+                var missing = REQUIRED_HEADERS.filter(function (h) { return !res.headers.has(h); });
+                var csp = res.headers.get("content-security-policy") || "";
+                var scriptSrc = (csp.match(/script-src[^;]*/) || [""])[0];
+                var unsafe = /'unsafe-(inline|eval)'/.test(scriptSrc);
+                if (location.protocol !== "https:") {
+                    setSiteCheck(headersCheck, false, "Served over plain HTTP — HSTS and the rest only count over HTTPS");
+                } else if (missing.length) {
+                    setSiteCheck(headersCheck, false, "Missing: " + missing.join(", "));
+                } else if (unsafe) {
+                    setSiteCheck(headersCheck, false, "Content-Security-Policy allows unsafe inline scripts");
+                } else {
+                    setSiteCheck(headersCheck, true, "All six security headers in place, with a strict Content-Security-Policy");
+                }
+            })
+            .catch(function () {
+                setSiteCheck(headersCheck, false, "Couldn't check headers");
+            });
     }
 
     function poll() {
@@ -603,10 +695,10 @@
             img.alt = "";
             img.loading = "lazy";
             var fallback = el("span", "capsule-fallback", (g.name || "?").charAt(0).toUpperCase());
-            fallback.style.display = "none";
+            fallback.hidden = true;
             img.addEventListener("error", function () {
-                img.style.display = "none";
-                fallback.style.display = "";
+                img.hidden = true;
+                fallback.hidden = false;
             });
             img.src = g.art;
             capsule.appendChild(img);

@@ -9,8 +9,11 @@ if (function_exists('set_time_limit')) {
 }
 
 require __DIR__ . '/lib/Config.php';
+require __DIR__ . '/lib/Security.php';
 require __DIR__ . '/lib/Library.php';
 require __DIR__ . '/lib/VersionCheck.php';
+
+Security::sendHeaders('html');
 
 function e(?string $value): string
 {
@@ -84,7 +87,7 @@ function timeAgo(int $ts): string
  */
 function renderTooltip(?array $info, string $attr = ''): string
 {
-    $html = '<span class="art-tooltip"' . ($attr !== '' ? ' ' . $attr : '') . ($info ? '' : ' style="display:none"') . '>';
+    $html = '<span class="art-tooltip"' . ($attr !== '' ? ' ' . $attr : '') . ($info ? '' : ' hidden') . '>';
     if ($info) {
         $html .= '<span class="art-tooltip-title">' . e($info['title']) . '</span>';
         foreach ($info['groups'] as $group) {
@@ -289,13 +292,13 @@ function renderGameList(array $rows, string $emptyMessage, ?string $note, bool $
         echo '<li class="game-row">'
             . '<span class="rank">' . (int) $r['rank'] . '</span>'
             . '<span class="art-hover"><a class="capsule" href="' . e($r['url']) . '" target="_blank" rel="noopener" tabindex="-1">'
-            . '<img src="' . e($r['art']) . '" alt="" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'\';">'
-            . '<span class="capsule-fallback" style="display:none">' . e($initial) . '</span></a>'
+            . '<img src="' . e($r['art']) . '" alt="" loading="lazy" data-fallback-sibling>'
+            . '<span class="capsule-fallback" hidden>' . e($initial) . '</span></a>'
             . renderTooltip($r['info'] ?? null) . '</span>'
             . '<span class="meta"><a class="name" href="' . e($r['url']) . '" target="_blank" rel="noopener">' . e($r['name']) . '</a>'
             . '<span class="sub">' . e($sub) . '</span></span>'
             . '<span class="count">' . e($r['label'])
-            . ($r['pct'] > 0 ? '<span class="bar"><span class="bar-fill" style="width: ' . (int) $r['pct'] . '%"></span></span>' : '')
+            . ($r['pct'] > 0 ? '<span class="bar"><span class="bar-fill" data-w="' . (int) $r['pct'] . '"></span></span>' : '')
             . '</span></li>';
     }
     echo '</ol>';
@@ -318,12 +321,12 @@ function renderGenres(array $result): void
 
     echo '<div class="genre-bar">';
     foreach ($result['genres'] as $i => $g) {
-        echo '<div class="genre-segment" style="width: ' . $g['pct'] . '%; background: ' . genreColor($i) . '" title="' . e($g['name'] . ' — ' . $g['pct'] . '%') . '"></div>';
+        echo '<div class="genre-segment" data-w="' . $g['pct'] . '" data-bg="' . genreColor($i) . '" title="' . e($g['name'] . ' — ' . $g['pct'] . '%') . '"></div>';
     }
     echo '</div><ul class="genre-legend">';
     foreach ($result['genres'] as $i => $g) {
         echo '<li class="genre-legend-item" data-pct="' . $g['pct'] . '">'
-            . '<span class="genre-swatch" style="background: ' . genreColor($i) . '"></span>'
+            . '<span class="genre-swatch" data-bg="' . genreColor($i) . '"></span>'
             . '<span class="genre-name">' . e($g['name']) . '</span>'
             . '<span class="genre-pct">' . $g['pct'] . '% · ' . e(Library::formatMinutes($g['hours'] * 60)) . '</span></li>';
     }
@@ -398,7 +401,7 @@ function renderHeroLinks(?array $game): string
                         <?php if (isset($persona['level'])): ?>
                             <span class="persona-xp" title="<?= e($persona['xp_title']) ?>">
                                 <span class="level-badge">LV <?= (int) $persona['level'] ?></span>
-                                <span class="xp-bar"><span class="xp-fill" style="width: <?= (int) $persona['xp_pct'] ?>%"></span></span>
+                                <span class="xp-bar"><span class="xp-fill" data-w="<?= (int) $persona['xp_pct'] ?>"></span></span>
                             </span>
                         <?php endif; ?>
                     </span>
@@ -414,7 +417,7 @@ function renderHeroLinks(?array $game): string
                  data-player-base="<?= e(twitchPlayerUrl($library->twitch()->channel())) ?>"<?= $twitchLive ? '' : ' hidden' ?>>
             <div class="twitch-player" data-twitch-player>
                 <?php if ($twitchLive && $embedPlayer): ?>
-                    <iframe src="<?= e(twitchPlayerUrl($twitchLive['channel'])) ?>" title="Live on Twitch" allowfullscreen></iframe>
+                    <iframe src="<?= e(twitchPlayerUrl($twitchLive['channel'])) ?>" title="Live on Twitch" allow="autoplay; fullscreen" allowfullscreen></iframe>
                 <?php elseif ($twitchLive): ?>
                     <img src="<?= e($twitchLive['thumbnail']) ?>" alt="Stream preview">
                 <?php endif; ?>
@@ -465,9 +468,9 @@ function renderHeroLinks(?array $game): string
     <section class="now-playing">
         <div class="art-hover">
             <div class="art-tile">
-                <span class="art-tile-fallback" data-art-fallback style="<?= empty($current['art']) ? '' : 'display:none' ?>"><?= e($heroInitial) ?></span>
+                <span class="art-tile-fallback" data-art-fallback<?= empty($current['art']) ? '' : ' hidden' ?>><?= e($heroInitial) ?></span>
                 <img data-art-img src="<?= e($current['art'] ?? '') ?>" data-fallback-src="<?= e($current['art_fallback'] ?? '') ?>" alt="Game art"
-                     style="<?= empty($current['art']) ? 'display:none' : '' ?>">
+                     <?= empty($current['art']) ? 'hidden' : '' ?>>
             </div>
             <?= renderTooltip($current['info'] ?? null, 'data-hero-tooltip') ?>
         </div>
@@ -476,21 +479,21 @@ function renderHeroLinks(?array $game): string
             <p class="game-name" data-game-name><?= e($current['name'] ?? 'No recent games') ?></p>
             <p class="game-platform" data-game-platform><?= e($current['platform_label'] ?? '') ?></p>
             <p class="game-subtitle" data-game-subtitle><?= e($current['subtitle'] ?? '') ?></p>
-            <p class="game-presence" data-game-presence style="<?= empty($current['presence']) ? 'display:none' : '' ?>"><?= e($current['presence'] ?? '') ?></p>
+            <p class="game-presence" data-game-presence<?= empty($current['presence']) ? ' hidden' : '' ?>><?= e($current['presence'] ?? '') ?></p>
             <p class="game-facts" data-game-facts><?= e(implode(' · ', $current['facts'] ?? [])) ?></p>
             <?php $ach = $current['achievements'] ?? null; ?>
-            <div class="ach-progress" data-ach-wrap style="<?= $ach ? '' : 'display:none' ?>">
-                <div class="ach-bar"><div class="ach-fill" data-ach-fill style="width: <?= (int) ($ach['pct'] ?? 0) ?>%"></div></div>
+            <div class="ach-progress" data-ach-wrap<?= $ach ? '' : ' hidden' ?>>
+                <div class="ach-bar"><div class="ach-fill" data-ach-fill data-w="<?= (int) ($ach['pct'] ?? 0) ?>"></div></div>
                 <span class="ach-label" data-ach-label><?= $ach ? e($ach['unlocked'] . ' / ' . $ach['total'] . ' ' . ($ach['noun'] ?? 'achievements') . ' · ' . $ach['pct'] . '%') : '' ?></span>
             </div>
             <div class="game-links" data-game-links><?= renderHeroLinks($current) ?></div>
         </div>
-        <div class="prev-track" data-prev style="<?= $previous ? '' : 'display:none' ?>">
+        <div class="prev-track" data-prev<?= $previous ? '' : ' hidden' ?>>
             <div class="art-hover">
                 <div class="prev-track-thumb">
-                    <span class="prev-track-thumb-fallback" data-prev-art-fallback style="<?= empty($previous['art']) ? '' : 'display:none' ?>"><?= e(strtoupper(mb_substr($previous['name'] ?? '?', 0, 1))) ?></span>
+                    <span class="prev-track-thumb-fallback" data-prev-art-fallback<?= empty($previous['art']) ? '' : ' hidden' ?>><?= e(strtoupper(mb_substr($previous['name'] ?? '?', 0, 1))) ?></span>
                     <img data-prev-art-img src="<?= e($previous['art'] ?? '') ?>" data-fallback-src="<?= e($previous['art_fallback'] ?? '') ?>" alt=""
-                         style="<?= empty($previous['art']) ? 'display:none' : '' ?>">
+                         <?= empty($previous['art']) ? 'hidden' : '' ?>>
                 </div>
                 <?= renderTooltip($previous['info'] ?? null, 'data-prev-tooltip') ?>
             </div>
@@ -572,13 +575,13 @@ function renderHeroLinks(?array $game): string
                     ?>
                         <li>
                             <a href="<?= e(RetroAchievements::gameUrl((int) ($g['GameID'] ?? 0))) ?>" target="_blank" rel="noopener">
-                                <img src="<?= e(RetroAchievements::media($g['ImageIcon'] ?? null)) ?>" alt="" loading="lazy">
+                                <img src="<?= e(RetroAchievements::media($g['ImageIcon'] ?? null)) ?>" alt="" loading="lazy" data-hide-on-error>
                             </a>
                             <div class="platform-game-meta">
                                 <div class="name"><?= e($g['Title'] ?? '') ?></div>
                                 <div class="sub"><?= e(($g['ConsoleName'] ?? '') . ' · ' . timeAgo(RetroAchievements::parseTime($g['LastPlayed'] ?? null))) ?></div>
                                 <?php if ($possible > 0): ?>
-                                    <div class="bar"><div class="bar-fill" style="width: <?= $pct ?>%"></div></div>
+                                    <div class="bar"><div class="bar-fill" data-w="<?= $pct ?>"></div></div>
                                     <div class="sub"><?= $achieved ?> / <?= $possible ?> achievements</div>
                                 <?php endif; ?>
                             </div>
@@ -613,7 +616,7 @@ function renderHeroLinks(?array $game): string
                         <li>
                             <span class="art-hover">
                                 <a href="<?= e(Xbox::storeSearchUrl($g['name'])) ?>" target="_blank" rel="noopener">
-                                    <img src="<?= e($g['image']) ?>" alt="" loading="lazy">
+                                    <img src="<?= e($g['image']) ?>" alt="" loading="lazy" data-hide-on-error>
                                 </a>
                                 <?= renderTooltip($library->xboxInfo($g, $g['name'])) ?>
                             </span>
@@ -621,7 +624,7 @@ function renderHeroLinks(?array $game): string
                                 <div class="name"><?= e($g['name']) ?></div>
                                 <div class="sub"><?= e(implode(' · ', array_filter([$devices, $g['minutes'] > 0 ? Library::formatMinutes($g['minutes']) : '', timeAgo($g['last_played'])]))) ?></div>
                                 <?php if ($g['gamerscore_total'] > 0): ?>
-                                    <div class="bar"><div class="bar-fill" style="width: <?= (int) $g['progress_pct'] ?>%"></div></div>
+                                    <div class="bar"><div class="bar-fill" data-w="<?= (int) $g['progress_pct'] ?>"></div></div>
                                     <div class="sub"><?= number_format($g['gamerscore']) ?> / <?= number_format($g['gamerscore_total']) ?> G<?= $g['game_pass'] ? ' · Game Pass' : '' ?></div>
                                 <?php endif; ?>
                             </div>
@@ -659,7 +662,7 @@ function renderHeroLinks(?array $game): string
                         <li>
                             <span class="art-hover">
                                 <a href="<?= e(PlayStation::storeSearchUrl($g['name'])) ?>" target="_blank" rel="noopener">
-                                    <img src="<?= e($g['image']) ?>" alt="" loading="lazy">
+                                    <img src="<?= e($g['image']) ?>" alt="" loading="lazy" data-hide-on-error>
                                 </a>
                                 <?= renderTooltip($library->psnInfo($g)) ?>
                             </span>
@@ -667,7 +670,7 @@ function renderHeroLinks(?array $game): string
                                 <div class="name"><?= e($g['name']) ?></div>
                                 <div class="sub"><?= e(implode(' · ', array_filter([$g['platform'], $g['minutes'] > 0 ? Library::formatMinutes($g['minutes']) : '', timeAgo($g['last_played'])]))) ?></div>
                                 <?php if ($t && $t['defined_total'] > 0): ?>
-                                    <div class="bar"><div class="bar-fill" style="width: <?= (int) $t['progress'] ?>%"></div></div>
+                                    <div class="bar"><div class="bar-fill" data-w="<?= (int) $t['progress'] ?>"></div></div>
                                     <div class="sub"><?= $t['earned_total'] ?> / <?= $t['defined_total'] ?> trophies<?= $t['earned']['platinum'] > 0 ? ' · <span class="trophy-platinum-text">Platinum</span>' : '' ?></div>
                                 <?php endif; ?>
                             </div>
@@ -700,7 +703,7 @@ function renderHeroLinks(?array $game): string
                             }
                         ?>
                             <div class="week-bar-col" title="<?= e($tip) ?>">
-                                <div class="week-bar" style="height: <?= max(4, (int) round($day['minutes'] / $weekMax * 100)) ?>%"></div>
+                                <div class="week-bar" data-h="<?= max(4, (int) round($day['minutes'] / $weekMax * 100)) ?>"></div>
                                 <span><?= e(date('D', strtotime($day['date']))) ?></span>
                             </div>
                         <?php endforeach; ?>
@@ -715,14 +718,14 @@ function renderHeroLinks(?array $game): string
                         <li>
                             <span class="art-hover">
                                 <a href="<?= e(Nintendo::storeSearchUrl($g['name'])) ?>" target="_blank" rel="noopener">
-                                    <img src="<?= e($g['image']) ?>" alt="" loading="lazy">
+                                    <img src="<?= e($g['image']) ?>" alt="" loading="lazy" data-hide-on-error>
                                 </a>
                                 <?= renderTooltip($library->nintendoInfo($g)) ?>
                             </span>
                             <div class="platform-game-meta">
                                 <div class="name"><?= e($g['name']) ?></div>
                                 <div class="sub"><?= e(implode(' · ', array_filter([implode(' / ', $g['platforms']), Library::formatMinutes($g['minutes']), timeAgo($g['last_played'])]))) ?></div>
-                                <div class="bar"><div class="bar-fill" style="width: <?= max(2, (int) round($g['minutes'] / max(1, $nintendo['max_mins']) * 100)) ?>%"></div></div>
+                                <div class="bar"><div class="bar-fill" data-w="<?= max(2, (int) round($g['minutes'] / max(1, $nintendo['max_mins']) * 100)) ?>"></div></div>
                                 <div class="sub"><?= number_format($g['days']) ?> day<?= $g['days'] === 1 ? '' : 's' ?> played</div>
                             </div>
                         </li>
@@ -795,6 +798,26 @@ function renderHeroLinks(?array $game): string
                 </a>
             <?php endif; ?>
         </div>
+        <?php
+        // Site checks. DNSSEC is looked up here (cached 12h); the headers
+        // check runs in the browser against what actually arrives — see
+        // headers-check.php and assets/app.js.
+        $siteDomain = Security::siteDomain($config);
+        $dnssec = $siteDomain ? Security::dnssec($siteDomain) : null;
+        $dnssecTitle = !$siteDomain ? 'Not checked — the dashboard isn\'t on a public domain (set site_domain in config.php)'
+            : ($dnssec === null ? 'Couldn\'t check DNSSEC for ' . $siteDomain . ' right now'
+            : ($dnssec ? $siteDomain . ' is DNSSEC-signed and validates' : $siteDomain . ' isn\'t DNSSEC-signed (or doesn\'t validate)'));
+        ?>
+        <div class="site-checks">
+            <a class="site-check <?= $dnssec ? 'check-ok' : 'check-fail' ?>" title="<?= e($dnssecTitle) ?>"
+               <?= $siteDomain ? 'href="https://dnsviz.net/d/' . e($siteDomain) . '/dnssec/" target="_blank" rel="noopener"' : '' ?>>
+                <span class="check-icon"><?= $dnssec ? '✓' : '✗' ?></span> DNSSEC
+            </a>
+            <a class="site-check check-pending" data-site-check="headers" title="Checking…"
+               <?= $siteDomain ? 'href="https://securityheaders.com/?q=' . e(rawurlencode($siteDomain)) . '&amp;followRedirects=on" target="_blank" rel="noopener"' : '' ?>>
+                <span class="check-icon">…</span> Security Headers
+            </a>
+        </div>
         <?php if ($library && $library->ledger()->started()): ?>
             <div class="ledger-line" title="Steam only reports lifetime playtime; XP Ledger records how it changes to build dated play history">
                 Playtime ledger running since <?= e(date('j M Y', (int) $library->ledger()->started())) ?>
@@ -831,7 +854,7 @@ function renderHeroLinks(?array $game): string
     </footer>
 </div>
 
-<script>
+<script nonce="<?= e(Security::nonce()) ?>">
 window.APP_CONFIG = { pollIntervalMs: <?= (int) $config['poll_interval_ms'] ?>, enabled: <?= $needsSetup ? 'false' : 'true' ?> };
 window.INITIAL_GAME = <?= json_encode($current) ?>;
 window.INITIAL_TWITCH = <?= json_encode($twitchLive) ?>;

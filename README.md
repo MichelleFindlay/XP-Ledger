@@ -1,6 +1,6 @@
 # XP Ledger
 
-**v1.0.0** · A self-hosted, single-page gaming dashboard, in the spirit of
+**v1.0.1** · A self-hosted, single-page gaming dashboard, in the spirit of
 [lastfm-dash](https://github.com/MichelleFindlay/lastfm-dash).
 
 It shows what you're playing right now across every platform you connect,
@@ -72,6 +72,11 @@ section below for setup and limits.
     Linux/SteamOS, macOS and Steam Deck.
 - **MCP server** (optional): lets an AI client query your library, play
   history, achievements and every connected platform. Read-only.
+- **Security built in**: every response sends a full set of security
+  headers, including a strict Content-Security-Policy with no
+  `'unsafe-inline'` (aimed at an A+ on
+  [securityheaders.com](https://securityheaders.com)). The footer shows a
+  live ✓/✗ for **DNSSEC** and **Security Headers**.
 - **Self-update check** in the footer, against the latest GitHub release.
 
 Whenever a number is derived rather than read straight from an API, the
@@ -133,6 +138,7 @@ explain each one in more detail.
 | `retroachievements_username`, `retroachievements_api_key` | `''` | RetroAchievements; blank turns it off |
 | `twitch_channel`, `twitch_client_id`, `twitch_client_secret` | `''` | Twitch live banner; any blank turns it off |
 | `twitch_embed_player` | `true` | `false` shows a preview image instead of the video player |
+| `site_domain` | `''` | Public domain for the footer's DNSSEC / Security Headers checks; blank uses the request's hostname |
 | `app_name` | `'XP Ledger'` | Page title and header |
 | `poll_interval_ms` | `30000` | How often the page refreshes Now Playing and Twitch |
 | `cache_ttl` | `120` | General Steam API cache, in seconds |
@@ -381,6 +387,49 @@ Client setup (Claude app connectors, OpenAI's Responses API, etc.) is the
 same as for lastfm-dash. See its README for step-by-step instructions.
 
 ## Security
+
+### Security headers
+
+Every response sends these headers, from `lib/Security.php`:
+
+| Header | Value |
+|---|---|
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
+| `Content-Security-Policy` | Strict: scripts and styles only from this site, plus a per-request nonce for the one inline script; no `'unsafe-inline'` anywhere. Images from any `https:` origin (game art comes from many CDNs), Google Fonts, and the Twitch player in a frame. |
+| `X-Frame-Options` | `SAMEORIGIN` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | Everything off, except autoplay and fullscreen for the Twitch player |
+| `Cross-Origin-Opener-Policy` / `Cross-Origin-Resource-Policy` | `same-origin` |
+
+`X-Powered-By` (which reveals the PHP version) is removed. JSON and text
+endpoints get a lock-down policy (`default-src 'none'`), and the included
+`.htaccess` adds the basics to static files on Apache.
+
+Because the policy blocks inline styles and scripts, the page has no
+`style="…"` or `onclick="…"` attributes. Sizes and colours are rendered as
+`data-w` / `data-h` / `data-bg` attributes and applied by `assets/app.js`.
+Keep it that way when changing the templates, or the browser will block the
+change (it shows up as a "Refused to…" message in the console).
+
+### Footer checks
+
+Under "Powered by", the footer shows two live checks, each linking to a
+public tool so you can verify it:
+
+- **DNSSEC** ✓/✗: whether your domain's DNS records are signed and validate.
+  Checked through Cloudflare's DNS-over-HTTPS resolver, cached 12 hours.
+  Links to [DNSViz](https://dnsviz.net).
+- **Security Headers** ✓/✗: checked in the browser against the headers that
+  actually arrive (via `headers-check.php`), so it also catches a proxy or
+  CDN that strips them. It needs HTTPS: over plain HTTP it shows ✗. Links to
+  [securityheaders.com](https://securityheaders.com).
+
+Both use the hostname the page was opened on, or `site_domain` if you set
+it. On `localhost` or a bare IP address, DNSSEC shows ✗ because there's no
+public domain to check.
+
+### Keeping secrets safe
 
 - **`config.php`** holds your API keys and the PlayStation, Nintendo and
   Twitch credentials. It's gitignored; keep it private.

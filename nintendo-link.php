@@ -18,6 +18,7 @@
  */
 
 require __DIR__ . '/lib/Nintendo.php';
+require __DIR__ . '/lib/Security.php';
 
 $copyHelp = 'On the "Select this account" page, don\'t click the button. Right-click it and choose "Copy link address" '
     . '(or open the browser console and run: copy(document.getElementById(\'authorize-switch-approval-link\').href)). '
@@ -41,6 +42,7 @@ if (PHP_SAPI === 'cli') {
 
 // --- Browser ---
 
+Security::sendHeaders('html');
 header('Cache-Control: no-store');
 header('Referrer-Policy: no-referrer');
 
@@ -68,7 +70,7 @@ $start = $token ? null : Nintendo::startLink();
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>Connect Nintendo · XP Ledger</title>
-<style>
+<style nonce="<?= h(Security::nonce()) ?>">
     body { margin: 0; padding: 40px 20px; background: #06080d; color: #f5f5f7; font: 15px/1.55 -apple-system, "Segoe UI", Roboto, sans-serif; }
     main { max-width: 640px; margin: 0 auto; }
     h1 { font-size: 1.4rem; letter-spacing: 0.04em; }
@@ -89,7 +91,7 @@ $start = $token ? null : Nintendo::startLink();
 
     <?php if ($token): ?>
         <p>Connected. Add this line to <code>config.php</code>, then reload the dashboard:</p>
-        <textarea readonly onclick="this.select()">'nintendo_session_token' => '<?= h($token) ?>',</textarea>
+        <textarea readonly data-select-on-click>'nintendo_session_token' => '<?= h($token) ?>',</textarea>
         <p class="muted">This token signs in as you and lasts about two years — keep it secret, like a password.
             Nothing was saved on the server; once you close this page, it's only in your <code>config.php</code>.</p>
     <?php else: ?>
@@ -110,5 +112,10 @@ $start = $token ? null : Nintendo::startLink();
         </ol>
     <?php endif; ?>
 </main>
+<script nonce="<?= h(Security::nonce()) ?>">
+document.querySelectorAll("[data-select-on-click]").forEach(function (el) {
+    el.addEventListener("click", function () { el.select(); });
+});
+</script>
 </body>
 </html>

@@ -17,6 +17,9 @@ if (function_exists('set_time_limit')) {
 }
 
 require __DIR__ . '/lib/Config.php';
+require __DIR__ . '/lib/Security.php';
+
+Security::sendHeaders('api');
 require __DIR__ . '/lib/Library.php';
 require __DIR__ . '/lib/Widgets.php';
 require __DIR__ . '/lib/WidgetCache.php';
