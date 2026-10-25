@@ -552,6 +552,7 @@
                 frame.title = "Live on Twitch";
                 frame.allow = "autoplay; fullscreen";
                 frame.allowFullscreen = true;
+                frame.setAttribute("credentialless", "");
                 twitchEls.player.appendChild(frame);
             } else if (live.thumbnail) {
                 var img = document.createElement("img");

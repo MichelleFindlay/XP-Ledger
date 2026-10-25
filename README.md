@@ -1,6 +1,6 @@
 # XP Ledger
 
-**v1.0.1** · A self-hosted, single-page gaming dashboard, in the spirit of
+**v1.0.2** · A self-hosted, single-page gaming dashboard, in the spirit of
 [lastfm-dash](https://github.com/MichelleFindlay/lastfm-dash).
 
 It shows what you're playing right now across every platform you connect,
@@ -401,6 +401,7 @@ Every response sends these headers, from `lib/Security.php`:
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 | `Permissions-Policy` | Everything off, except autoplay and fullscreen for the Twitch player |
 | `Cross-Origin-Opener-Policy` / `Cross-Origin-Resource-Policy` | `same-origin` |
+| `Cross-Origin-Embedder-Policy` | `credentialless`: cross-origin images still load, but without cookies. Not `require-corp`, which would block game art from CDNs that don't send CORP headers |
 
 `X-Powered-By` (which reveals the PHP version) is removed. JSON and text
 endpoints get a lock-down policy (`default-src 'none'`), and the included
@@ -419,7 +420,7 @@ public tool so you can verify it:
 
 - **DNSSEC** ✓/✗: whether your domain's DNS records are signed and validate.
   Checked through Cloudflare's DNS-over-HTTPS resolver, cached 12 hours.
-  Links to [DNSViz](https://dnsviz.net).
+  Links to [Verisign's DNSSEC Analyzer](https://dnssec-analyzer.verisignlabs.com).
 - **Security Headers** ✓/✗: checked in the browser against the headers that
   actually arrive (via `headers-check.php`), so it also catches a proxy or
   CDN that strips them. It needs HTTPS: over plain HTTP it shows ✗. Links to

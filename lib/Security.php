@@ -69,6 +69,12 @@ class Security
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('Cross-Origin-Opener-Policy: same-origin');
         header('Cross-Origin-Resource-Policy: same-origin');
+        // 'credentialless' rather than 'require-corp': game art comes from
+        // CDNs that don't send CORP headers, and this lets those images load
+        // (without cookies) instead of being blocked. The Twitch player
+        // doesn't send COEP itself, so its iframe carries the credentialless
+        // attribute to be allowed in.
+        header('Cross-Origin-Embedder-Policy: credentialless');
 
         // Everything off except what the Twitch player needs to autoplay
         // (muted) and go fullscreen inside its iframe.

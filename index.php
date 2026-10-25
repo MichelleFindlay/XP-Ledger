@@ -417,7 +417,7 @@ function renderHeroLinks(?array $game): string
                  data-player-base="<?= e(twitchPlayerUrl($library->twitch()->channel())) ?>"<?= $twitchLive ? '' : ' hidden' ?>>
             <div class="twitch-player" data-twitch-player>
                 <?php if ($twitchLive && $embedPlayer): ?>
-                    <iframe src="<?= e(twitchPlayerUrl($twitchLive['channel'])) ?>" title="Live on Twitch" allow="autoplay; fullscreen" allowfullscreen></iframe>
+                    <iframe src="<?= e(twitchPlayerUrl($twitchLive['channel'])) ?>" title="Live on Twitch" allow="autoplay; fullscreen" allowfullscreen credentialless></iframe>
                 <?php elseif ($twitchLive): ?>
                     <img src="<?= e($twitchLive['thumbnail']) ?>" alt="Stream preview">
                 <?php endif; ?>
@@ -810,7 +810,7 @@ function renderHeroLinks(?array $game): string
         ?>
         <div class="site-checks">
             <a class="site-check <?= $dnssec ? 'check-ok' : 'check-fail' ?>" title="<?= e($dnssecTitle) ?>"
-               <?= $siteDomain ? 'href="https://dnsviz.net/d/' . e($siteDomain) . '/dnssec/" target="_blank" rel="noopener"' : '' ?>>
+               <?= $siteDomain ? 'href="https://dnssec-analyzer.verisignlabs.com/' . e($siteDomain) . '" target="_blank" rel="noopener"' : '' ?>>
                 <span class="check-icon"><?= $dnssec ? '✓' : '✗' ?></span> DNSSEC
             </a>
             <a class="site-check check-pending" data-site-check="headers" title="Checking…"
